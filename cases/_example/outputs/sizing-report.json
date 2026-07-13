@@ -1,0 +1,66 @@
+{
+  "dbStats": {
+    "db": "sizing_claims_document_history",
+    "collections": 2,
+    "views": 0,
+    "objects": 1000,
+    "avgObjSize": 298.677,
+    "dataSize": 298677.0,
+    "storageSize": 94208.0,
+    "indexes": 4,
+    "indexSize": 90112.0,
+    "totalSize": 184320.0,
+    "scaleFactor": 1,
+    "fsUsedSize": 11668328448.0,
+    "fsTotalSize": 105087164416.0,
+    "ok": 1.0
+  },
+  "collections": [
+    {
+      "name": "client_document_history",
+      "ns": "sizing_claims_document_history.client_document_history",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 482,
+        "size": 241177,
+        "storageSize": 65536,
+        "totalIndexSize": 45056
+      },
+      "anchorTable": "CLIENT_DOCUMENT_HISTORY",
+      "disposition": "anchor",
+      "productionDocumentCount": 12000000,
+      "dataSizeProduction": 5788248000.0,
+      "indexSizeProduction": 1081344000.0
+    },
+    {
+      "name": "client_release_table",
+      "ns": "sizing_claims_document_history.client_release_table",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 115,
+        "size": 57500,
+        "storageSize": 28672,
+        "totalIndexSize": 45056
+      },
+      "anchorTable": "CLIENT_RELEASE_TABLE",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 8000000,
+      "dataSizeProduction": 920000000.0,
+      "indexSizeProduction": 720896000.0
+    }
+  ],
+  "databaseProductionDocumentCount": 20000000,
+  "databaseScaling": {
+    "compression": 0.6845823414591683,
+    "dataSizeProduction": 5973540000.0,
+    "storageSizeProduction": 1884160000.0,
+    "indexSizeProduction": 1802240000.0,
+    "ramUsage": 2703360000.0,
+    "diskRequired": 2512213333.3333335,
+    "ramRequired": 2703360000.0
+  },
+  "atlas": {
+    "diskRequired": 2512213333.3333335,
+    "ramRequired": 2703360000.0
+  }
+}

@@ -1,0 +1,19 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# Case outputs (commit _example artifacts for smoke tests)
+cases/*/outputs/
+!cases/_example/outputs/
+!cases/_example/outputs/**
+cases/_example/outputs/session.json
+
+# Session state
+cases/*/outputs/session.json
