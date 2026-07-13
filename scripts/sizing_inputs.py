@@ -22,14 +22,6 @@ def validate_intake(data: dict[str, Any]) -> None:
     jsonschema.validate(data, load_schema("intake.schema.json"))
 
 
-def load_intake(path: Path | str) -> dict[str, Any]:
-    p = Path(path)
-    with open(p, encoding="utf-8") as f:
-        data = json.load(f)
-    validate_intake(data)
-    return data
-
-
 def sizing_inputs_path(case_dir: Path) -> Path:
     """Agent-generated sizing metadata lives under case outputs."""
     return case_dir / "outputs" / "sizing_inputs.json"
