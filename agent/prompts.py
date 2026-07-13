@@ -20,8 +20,9 @@ Deterministic sizing numbers come from scripts/size_from_dbstats.py—never inve
 
 Artifacts:
 - Phase 2: data-model.md (in outputs/)
-- Phase 3: sizing_inputs.json, seed.py, mongodb_indexes.json (in outputs/)
-- Phase 4: sizing-report.md, sizing-report.json
+- Phase 3: sizing_inputs.json (in outputs/)
+- Phase 5 (post-approval): seed.py, mongodb_indexes.json (in outputs/)
+- Phase 6: sizing-report.md, sizing-report.json
 """
 
 
