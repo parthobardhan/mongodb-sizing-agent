@@ -83,12 +83,11 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
                 "approve",
             ):
                 missing = missing_tools_artifacts(case_dir)
-                if missing and user_input.lower() == "approve":
+                if missing:
                     names = ", ".join(p.name for p in missing)
                     print(
-                        "Approved, but Generate artifacts not ready yet "
-                        f"({names}). Type 'run tools' after seed/indexes "
-                        "are written.",
+                        f"Generate artifacts not ready yet ({names}). "
+                        "Type 'run tools' after seed/indexes are written.",
                         file=sys.stderr,
                     )
                     continue
