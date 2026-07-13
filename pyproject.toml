@@ -1,0 +1,27 @@
+[project]
+name = "mongodb-sizing-agent"
+version = "0.1.0"
+description = "MongoDB document modeling and sizing agent (Cursor SDK + deterministic tooling)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "cursor-sdk>=0.1.0",
+    "pymongo>=4.6",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "jsonschema>=4.21",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requires local Docker/Colima MongoDB",
+    "agent: requires CURSOR_API_KEY and live agent",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["useCaseName", "queryLatencySlaMs"],
+  "additionalProperties": false,
+  "properties": {
+    "useCaseName": { "type": "string", "minLength": 1 },
+    "queryLatencySlaMs": { "type": "number", "minimum": 0 },
+    "productionRowCounts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "dataModelingNotes": { "type": "string" },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "discountPercent": { "type": ["number", "null"] },
+    "supportUpliftPercent": { "type": ["number", "null"] }
+  }
+}
