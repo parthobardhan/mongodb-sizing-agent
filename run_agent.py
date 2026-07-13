@@ -14,17 +14,28 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.prompts import SYSTEM_PROMPT, initial_case_message
-from agent.session import (
-    create_agent,
-    initial_send_mode,
-    load_session,
-    read_approval_status,
-    resume_agent,
-    save_session,
-    send_and_wait,
-)
-from agent.tools_runner import missing_tools_artifacts, run_tools_pipeline
 from scripts.sizing_inputs import validate_intake
+
+# cursor_sdk is an optional dependency: agent.session (and, transitively,
+# agent.tools_runner) import it at module scope. Guard the import here so a
+# missing SDK produces a friendly message from main() instead of crashing at
+# import time.
+try:
+    from cursor_sdk import CursorAgentError
+    from agent.session import (
+        create_agent,
+        initial_send_mode,
+        load_session,
+        read_approval_status,
+        resume_agent,
+        save_session,
+        send_and_wait,
+    )
+    from agent.tools_runner import missing_tools_artifacts, run_tools_pipeline
+
+    _SDK_IMPORT_ERROR: ImportError | None = None
+except ImportError as exc:
+    _SDK_IMPORT_ERROR = exc
 
 
 def case_dir_for(use_case: str) -> Path:
@@ -40,12 +51,6 @@ def load_intake(case_dir: Path) -> dict:
 
 
 def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int:
-    try:
-        from cursor_sdk import CursorAgentError
-    except ImportError:
-        print("error: cursor-sdk not installed", file=sys.stderr)
-        return 1
-
     outputs = case_dir / "outputs"
     outputs.mkdir(parents=True, exist_ok=True)
 
@@ -111,6 +116,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-cleanup", action="store_true")
     args = parser.parse_args(argv)
 
+    if _SDK_IMPORT_ERROR is not None:
+        print(
+            f"error: cursor-sdk not installed ({_SDK_IMPORT_ERROR})",
+            file=sys.stderr,
+        )
+        return 1
+
     case_dir = case_dir_for(args.case)
     if not case_dir.is_dir():
         print(f"error: case not found: {case_dir}", file=sys.stderr)
@@ -125,8 +137,6 @@ def main(argv: list[str] | None = None) -> int:
             no_cleanup=args.no_cleanup,
         )
         return 0
-
-    from cursor_sdk import CursorAgentError
 
     try:
         return cmd_interactive(case_dir, args.case, args.resume)
