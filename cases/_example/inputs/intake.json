@@ -1,0 +1,13 @@
+{
+  "useCaseName": "claims-document-history",
+  "queryLatencySlaMs": 50,
+  "productionRowCounts": {
+    "CLIENT_DOCUMENT_HISTORY": 12000000,
+    "CLIENT_DOCUMENT_DETAIL_HISTORY": 60000000,
+    "CLIENT_RELEASE_TABLE": 8000000
+  },
+  "dataModelingNotes": "Detail lines are read with the parent claim document on every hot-path query. Release rows are keyed by composite natural key (cKey, cKey_Type, cCopy_Number).",
+  "assumptions": [],
+  "discountPercent": null,
+  "supportUpliftPercent": null
+}
