@@ -1,0 +1,13 @@
+---
+description: MongoDB sizing agent workflow, gates, and artifact locations
+globs:
+  - "**/*"
+---
+
+# MongoDB sizing agent
+
+- Phase 2 deliverable: `cases/{useCase}/outputs/data-model.md` (approval required before seed/Docker).
+- Phase 4: `sizing-report.md` / `.json` from `scripts/size_from_dbstats.py` only.
+- `mongodb_indexes.json`: compound indexes with no redundant prefix indexes on same collection/options.
+- Seed: 500 documents per top-level collection; embedded arrays sized from `outputs/sizing_inputs.json` embedded.avgCardinality.
+- macOS local MongoDB: Colima + `docker compose` (see `scripts/run_local_stack.sh`).
