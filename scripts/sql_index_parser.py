@@ -28,18 +28,22 @@ def parse_create_index(sql: str) -> dict[str, Any] | None:
     }
 
 
+def _strip_sql_comments(sql: str) -> str:
+    """Remove ``--`` line comments so leading comments don't hide statements."""
+    lines = [re.sub(r"--.*$", "", line) for line in sql.splitlines()]
+    return "\n".join(lines)
+
+
 def parse_sql_file(path: str) -> list[dict[str, Any]]:
     from pathlib import Path
 
     text = Path(path).read_text(encoding="utf-8")
     results = []
-    for line in text.split(";"):
-        line = line.strip()
-        if not line.upper().startswith("CREATE INDEX") and not line.upper().startswith(
-            "CREATE UNIQUE INDEX"
-        ):
+    for segment in text.split(";"):
+        segment = _strip_sql_comments(segment).strip()
+        if not segment:
             continue
-        parsed = parse_create_index(line)
+        parsed = parse_create_index(segment)
         if parsed:
             results.append(parsed)
     return results
