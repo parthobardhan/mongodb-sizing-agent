@@ -128,9 +128,42 @@ def _send_options(mode: str | None) -> SendOptions | None:
     return SendOptions(mode=mode, model=DEFAULT_MODEL)
 
 
+def _tool_activity_line(message: Any) -> str | None:
+    """Return a short stderr line for tool-call / tool-result style messages."""
+    msg_type = getattr(message, "type", None)
+    if msg_type not in ("tool_call", "tool-call", "tool", "function_call"):
+        # Nested under assistant / tool envelopes used by some SDK shapes.
+        tool_name = getattr(message, "name", None) or getattr(message, "tool_name", None)
+        if tool_name and msg_type not in ("assistant", "user", "system"):
+            target = getattr(message, "path", None) or getattr(message, "target", None) or ""
+            suffix = f" {target}" if target else ""
+            return f"[tool: {tool_name}{suffix}]"
+        return None
+
+    name = (
+        getattr(message, "name", None)
+        or getattr(message, "tool_name", None)
+        or getattr(getattr(message, "tool_call", None), "name", None)
+        or "unknown"
+    )
+    target = (
+        getattr(message, "path", None)
+        or getattr(message, "target", None)
+        or getattr(getattr(message, "args", None), "path", None)
+        or ""
+    )
+    if not target and isinstance(getattr(message, "args", None), dict):
+        target = message.args.get("path") or message.args.get("file") or ""
+    suffix = f" {target}" if target else ""
+    return f"[tool: {name}{suffix}]"
+
+
 def stream_run_text(run) -> str:
     parts: list[str] = []
     for message in run.messages():
+        activity = _tool_activity_line(message)
+        if activity:
+            print(activity, file=sys.stderr, flush=True)
         if getattr(message, "type", None) == "assistant":
             msg = getattr(message, "message", message)
             content = getattr(msg, "content", [])
@@ -140,6 +173,9 @@ def stream_run_text(run) -> str:
                     if text:
                         print(text, end="", flush=True)
                         parts.append(text)
+                activity = _tool_activity_line(block)
+                if activity:
+                    print(activity, file=sys.stderr, flush=True)
     return "".join(parts)
 
 
@@ -155,8 +191,9 @@ def send_and_wait(
     stream_run_text(run)
     result = run.wait()
     if result.status == "error":
-        print("Agent run failed.", file=sys.stderr)
-        sys.exit(2)
+        raise CursorAgentError(
+            f"Agent run failed (run id={getattr(run, 'id', '?')} status=error)"
+        )
     return result
 
 

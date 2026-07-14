@@ -37,15 +37,17 @@ def apply_indexes(uri: str, spec_path: Path, database: str | None = None) -> int
         raise ValueError("database name required in spec or --db")
 
     client = MongoClient(uri)
-    db = client[db_name]
-    created = 0
-    for idx in spec.get("indexes", []):
-        collection = db[idx["collection"]]
-        keys = keys_to_pymongo(idx["keys"])
-        options = dict(idx.get("options") or {})
-        collection.create_index(keys, **options)
-        created += 1
-    client.close()
+    try:
+        db = client[db_name]
+        created = 0
+        for idx in spec.get("indexes", []):
+            collection = db[idx["collection"]]
+            keys = keys_to_pymongo(idx["keys"])
+            options = dict(idx.get("options") or {})
+            collection.create_index(keys, **options)
+            created += 1
+    finally:
+        client.close()
     print(f"Created {created} index(es) on {db_name}")
     return created
 

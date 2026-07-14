@@ -32,6 +32,31 @@ class TestDbStatsScaling:
             result["storageSizeProduction"] / 0.75
         )
         assert result["ramRequired"] == result["ramUsage"]
+        assert result["sizingBasis"] == "measured-storage"
+        assert "warning" not in result
+
+    def test_tiny_sample_uses_data_size_floor_for_disk(self):
+        """500-doc samples often report ~one WT page for storageSize."""
+        from scripts.size_from_dbstats import ASSUMED_STORAGE_TO_DATA_RATIO
+
+        db_stats = {
+            "objects": 500,
+            "avgObjSize": 297.58,
+            "dataSize": 290_000,
+            "storageSize": 4096,
+            "indexSize": 56_000,
+        }
+        prod = 20_000_000
+        result = compute_dbstats_scaling(db_stats, prod)
+
+        floor_storage = result["dataSizeProduction"] * ASSUMED_STORAGE_TO_DATA_RATIO
+        measured_storage = (4096 / 500) * prod
+        assert floor_storage > measured_storage
+        assert result["sizingBasis"] == "data-size-floor"
+        assert result["storageSizeProduction"] == pytest.approx(floor_storage)
+        assert result["diskRequired"] == pytest.approx(floor_storage / 0.75)
+        assert result["diskRequired"] >= result["dataSizeProduction"] * ASSUMED_STORAGE_TO_DATA_RATIO / 0.75
+        assert "warning" in result
 
     def test_zero_data_size_compression_guard(self):
         db_stats = {"objects": 10, "dataSize": 0, "storageSize": 0, "indexSize": 0}
@@ -43,6 +68,7 @@ class TestDbStatsScaling:
         result = compute_dbstats_scaling(db_stats, 1_000)
         assert "warning" in result
         assert result["diskRequired"] == 0
+        assert result["sizingBasis"] == "measured-storage"
 
 
 class TestCollStatsScaling:

@@ -105,7 +105,7 @@ def test_send_and_wait_with_mode():
     assert args[1].model == DEFAULT_MODEL
 
 
-def test_send_and_wait_exits_on_error_status():
+def test_send_and_wait_raises_on_error_status():
     agent = MagicMock()
     agent.agent_id = "a1"
     run = MagicMock()
@@ -114,9 +114,8 @@ def test_send_and_wait_exits_on_error_status():
     run.messages.return_value = []
     agent.send.return_value = run
 
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(CursorAgentError, match="Agent run failed"):
         send_and_wait(agent, "hello")
-    assert exc.value.code == 2
 
 
 def test_stream_run_text_concatenates_assistant_blocks():
@@ -133,6 +132,28 @@ def test_stream_run_text_concatenates_assistant_blocks():
         text = stream_run_text(run)
 
     assert text == "Hello world"
+
+
+def test_stream_run_text_prints_tool_activity():
+    from types import SimpleNamespace
+
+    tool_msg = SimpleNamespace(
+        type="tool_call",
+        name="Write",
+        path="cases/_example/outputs/data-model.md",
+        args={},
+    )
+    run = MagicMock()
+    run.messages.return_value = [tool_msg]
+
+    with patch("builtins.print") as mock_print:
+        text = stream_run_text(run)
+
+    assert text == ""
+    printed = " ".join(
+        str(c.args[0]) for c in mock_print.call_args_list if c.args
+    )
+    assert "[tool: Write cases/_example/outputs/data-model.md]" in printed
 
 
 def test_recover_stuck_runs_cancels_supported_running_runs(monkeypatch: pytest.MonkeyPatch):

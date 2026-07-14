@@ -60,14 +60,21 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
         print(f"Resumed agent {agent_id}", file=sys.stderr)
     else:
         agent = create_agent()
+        save_session(outputs, agent.agent_id)
 
     data_model_path = outputs / "data-model.md"
     mode = initial_send_mode(data_model_path)
 
     with agent:
         if not agent_id:
-            send_and_wait(agent, SYSTEM_PROMPT, mode=mode)
-            send_and_wait(agent, initial_case_message(case_dir, use_case), mode=mode)
+            try:
+                send_and_wait(agent, SYSTEM_PROMPT, mode=mode)
+                send_and_wait(agent, initial_case_message(case_dir, use_case), mode=mode)
+            except CursorAgentError as exc:
+                print(f"SDK error during bootstrap: {exc}", file=sys.stderr)
+                save_session(outputs, agent.agent_id)
+                return 1
+            save_session(outputs, agent.agent_id)
 
         while True:
             user_input = input("> ").strip()
@@ -78,7 +85,12 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
 
             if user_input.lower() == "approve":
                 mode = "agent"
-            send_and_wait(agent, user_input, mode=mode)
+            try:
+                send_and_wait(agent, user_input, mode=mode)
+            except CursorAgentError as exc:
+                print(f"SDK error: {exc}", file=sys.stderr)
+                save_session(outputs, agent.agent_id)
+                continue
             save_session(outputs, agent.agent_id)
 
             status = read_approval_status(data_model_path)

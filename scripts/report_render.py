@@ -54,12 +54,17 @@ def render_sizing_report_md(report: dict[str, Any]) -> str:
     lines.append(f"- Production document count (database): **{prod}**")
     if ds.get("compression") is not None:
         lines.append(f"- Compression ratio: **{ds['compression']:.4f}**")
+    basis = ds.get("sizingBasis")
+    if basis:
+        lines.append(f"- Sizing basis: **{basis}**")
     lines.append(f"- Data size (production): **{_fmt_bytes(ds.get('dataSizeProduction'))}**")
     lines.append(f"- Storage size (production): **{_fmt_bytes(ds.get('storageSizeProduction'))}**")
     lines.append(f"- Index size (production): **{_fmt_bytes(ds.get('indexSizeProduction'))}**")
     lines.append(f"- RAM usage estimate (index × 1.5): **{_fmt_bytes(ds.get('ramUsage'))}**")
     lines.append(f"- **Disk required** (storage / 0.75): **{_fmt_bytes(atlas.get('diskRequired'))}**")
     lines.append(f"- **RAM required**: **{_fmt_bytes(atlas.get('ramRequired'))}**")
+    if ds.get("warning"):
+        lines.append(f"- Warning: {ds['warning']}")
     lines.append("")
     lines.append(
         "_Per-collection rows are for detail; Disk/RAM above use database-level dbStats only._"

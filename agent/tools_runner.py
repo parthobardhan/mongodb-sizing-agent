@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -63,7 +64,7 @@ def run_tools_pipeline(
     verify_tools_ready(case_dir)
     uri = uri or os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
 
-    intake = __import__("json").loads((case_dir / "inputs" / "intake.json").read_text())
+    intake = json.loads((case_dir / "inputs" / "intake.json").read_text())
     use_case = intake["useCaseName"]
     db_name = slugify_use_case(use_case)
 
@@ -120,7 +121,7 @@ def run_tools_pipeline(
                 use_case,
             ]
         )
-    elif not no_cleanup and out_json.is_file():
+    elif not no_cleanup and out_json.is_file() and sys.stdin.isatty():
         answer = input(
             f"Clear local MongoDB database `{db_name}`? [y/N] "
         ).strip().lower()

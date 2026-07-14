@@ -12,13 +12,14 @@
 
 | Collection | Sample count | Prod docs | Data (prod) | Index (prod) |
 |------------|--------------|-----------|-------------|--------------|
-| client_document_history | 500 | 12000000 | 5.39 GB | 1.01 GB |
 | client_release_table | 500 | 8000000 | 877.38 MB | 687.50 MB |
+| client_document_history | 500 | 12000000 | 5.39 GB | 1.01 GB |
 
 ## Atlas sizing (from dbStats scaling)
 
 - Production document count (database): **20000000**
 - Compression ratio: **0.6846**
+- Sizing basis: **measured-storage**
 - Data size (production): **5.56 GB**
 - Storage size (production): **1.75 GB**
 - Index size (production): **1.68 GB**

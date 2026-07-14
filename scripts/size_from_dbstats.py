@@ -17,6 +17,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.sizing_inputs import database_production_document_count, load_sizing_inputs
 from scripts.report_render import render_sizing_report_md
 
+# WiredTiger min allocation; tiny samples often report only one page for storageSize.
+_WT_MIN_PAGE_BYTES = 4096
+# Floor when measured storageSize is unrepresentative of logical dataSize.
+ASSUMED_STORAGE_TO_DATA_RATIO = 0.5
+# Measured storage/data below this is treated as an untrustworthy tiny-sample artifact.
+_MIN_TRUSTED_STORAGE_TO_DATA_RATIO = 0.05
+
+
+def _storage_sample_untrusted(data_size: float, storage_size: float) -> bool:
+    """True when WiredTiger sample storage is too small to scale disk from."""
+    if data_size <= 0:
+        return False
+    if storage_size <= _WT_MIN_PAGE_BYTES and data_size > _WT_MIN_PAGE_BYTES:
+        return True
+    return (storage_size / data_size) < _MIN_TRUSTED_STORAGE_TO_DATA_RATIO
+
 
 def compute_dbstats_scaling(
     db_stats: dict[str, Any],
@@ -42,17 +58,33 @@ def compute_dbstats_scaling(
             "ramUsage": 0,
             "diskRequired": 0,
             "ramRequired": 0,
+            "sizingBasis": "measured-storage",
             "warning": "dbStats.objects is zero; cannot scale",
         }
 
     data_size_production = avg_obj_size * production_count
-    storage_size_production = (storage_size / objects) * production_count
+    measured_storage_production = (storage_size / objects) * production_count
     index_size_production = (index_size / objects) * production_count
     ram_usage = index_size_production * 1.5
-    disk_required = storage_size_production / 0.75
     ram_required = ram_usage
 
-    return {
+    untrusted = _storage_sample_untrusted(float(data_size), float(storage_size))
+    floor_storage_production = data_size_production * ASSUMED_STORAGE_TO_DATA_RATIO
+    if untrusted:
+        storage_size_production = max(measured_storage_production, floor_storage_production)
+        sizing_basis = "data-size-floor"
+        warning = (
+            "dbStats.storageSize looks like a tiny WiredTiger sample; "
+            f"disk uses max(measured, dataSize×{ASSUMED_STORAGE_TO_DATA_RATIO})"
+        )
+    else:
+        storage_size_production = measured_storage_production
+        sizing_basis = "measured-storage"
+        warning = None
+
+    disk_required = storage_size_production / 0.75
+
+    result: dict[str, Any] = {
         "compression": compression,
         "dataSizeProduction": data_size_production,
         "storageSizeProduction": storage_size_production,
@@ -60,7 +92,11 @@ def compute_dbstats_scaling(
         "ramUsage": ram_usage,
         "diskRequired": disk_required,
         "ramRequired": ram_required,
+        "sizingBasis": sizing_basis,
     }
+    if warning:
+        result["warning"] = warning
+    return result
 
 
 def compute_collection_scaling(
@@ -139,7 +175,6 @@ def build_report(
     }
 
 
-_WT_MIN_PAGE_BYTES = 4096
 _MIN_LOGICAL_SIZE_FOR_PAGE_CHECK = 8192
 
 
