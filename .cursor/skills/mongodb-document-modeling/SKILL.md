@@ -11,6 +11,10 @@ description: Propose MongoDB collections, disposition, sizing inputs gate, and d
 - **separate_collection** — own collection with references
 - **embedded** — array/subdocument in parent; needs avgCardinality
 
+## Schema design guidance
+
+For non-obvious embed vs reference (unbounded 1:N, M:N, hot-path co-access, 16MB risk, outlier docs), apply `/mongodb-schema-design` (especially embed-vs-reference and document-model fundamentals), then map the outcome to `anchor` / `embedded` / `separate_collection`. Skip for clear 1:1 or small bounded 1:few embeds.
+
 ## data-model.md sections
 
 Use case, disposition table, mapping, sample docs, embedding rationale, sizing inputs summary, index strategy (prefix coverage), Rationale, Assumptions, Approval block.

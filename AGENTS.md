@@ -3,7 +3,7 @@
 ## Phases
 
 1. **Intake** — Validate `intake.json` (useCaseName, queryLatencySlaMs, optional `productionRowCounts`, `dataModelingNotes`); read `schema.sql`, `indexes.sql`, ERD images. Ask when embed vs reference, hot paths, or keys are unclear.
-2. **Model** — Write `cases/{useCase}/outputs/data-model.md` with disposition table, mapping, samples, index strategy, **Rationale**, **Assumptions**, approval block (`pending`).
+2. **Model** — Write `cases/{useCase}/outputs/data-model.md` with disposition table, mapping, samples, index strategy, **Rationale**, **Assumptions**, approval block (`pending`). For non-obvious embed vs reference, use `/mongodb-schema-design`, then map to disposition via `/mongodb-document-modeling`.
 3. **Sizing gate** — Write `cases/{useCase}/outputs/sizing_inputs.json` (agent-generated only): `productionDocumentCount` per top-level collection; `avgCardinality` for embedded (derive from `intake.json` `productionRowCounts` when possible).
 4. **Approval** — User says `approve`; set status to `approved` in `data-model.md`. **Do not** write `seed.py`, start Docker, or run sizing before approval.
 5. **Generate** — `seed.py` (500 docs per top-level collection), `mongodb_indexes.json` (no redundant compound prefixes).
