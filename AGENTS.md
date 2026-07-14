@@ -7,7 +7,8 @@
 3. **Sizing gate** — Write `cases/{useCase}/outputs/sizing_inputs.json` (agent-generated only): `productionDocumentCount` per top-level collection; `avgCardinality` for embedded (derive from `intake.json` `productionRowCounts` when possible).
 4. **Approval** — User says `approve`; set status to `approved` in `data-model.md`. **Do not** write `seed.py`, start Docker, or run sizing before approval.
 5. **Generate** — `seed.py` (500 docs per top-level collection), `mongodb_indexes.json` (no redundant compound prefixes).
-6. **Tools** — `run_local_stack.sh` → seed → `apply_indexes.py` → `size_from_dbstats.py` → optional cleanup.
+6. **Tools** — `run_local_stack.sh` → seed → `apply_indexes.py` → `size_from_dbstats.py` → optional repository pytest → optional cleanup.
+7. **Legacy migration** (post-approval, when `inputs/legacy/*` exists) — `mongo_repository.py` (PyMongo, method-for-method from legacy DAO) and `test_mongo_repository.py`; tools pipeline runs pytest against seeded local Mongo when present.
 
 ## Gates
 

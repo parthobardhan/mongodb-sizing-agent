@@ -21,9 +21,15 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_TOOLS_ARTIFACTS = ("seed.py", "mongodb_indexes.json", "sizing_inputs.json")
 
 
-def run(cmd: list[str], *, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
+def run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    check: bool = True,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess:
     print(f"$ {' '.join(cmd)}", file=sys.stderr)
-    return subprocess.run(cmd, cwd=cwd or PROJECT_ROOT, check=check)
+    return subprocess.run(cmd, cwd=cwd or PROJECT_ROOT, check=check, env=env)
 
 
 def verify_approved(case_dir: Path) -> None:
@@ -109,6 +115,22 @@ def run_tools_pipeline(
             str(out_json),
         ]
     )
+
+    repo_test = case_dir / "outputs" / "test_mongo_repository.py"
+    if repo_test.is_file():
+        print("Running legacy repository verification tests...", file=sys.stderr)
+        env = os.environ.copy()
+        env.setdefault("MONGODB_URI", uri)
+        run(
+            [sys.executable, "-m", "pytest", str(repo_test), "-v"],
+            cwd=PROJECT_ROOT,
+            env=env,
+        )
+    else:
+        print(
+            "Skipping repository tests (outputs/test_mongo_repository.py not present)",
+            file=sys.stderr,
+        )
 
     if cleanup:
         run(

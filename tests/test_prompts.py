@@ -22,6 +22,9 @@ def test_initial_case_message_lists_existing_files_only(case_under_project: Path
     inputs.mkdir()
     (inputs / "intake.json").write_text("{}", encoding="utf-8")
     (inputs / "schema.sql").write_text("-- ddl", encoding="utf-8")
+    legacy = inputs / "legacy"
+    legacy.mkdir()
+    (legacy / "ClaimDocumentRepository.java").write_text("// dao", encoding="utf-8")
 
     msg = initial_case_message(case_under_project, "my-case")
 
@@ -29,6 +32,7 @@ def test_initial_case_message_lists_existing_files_only(case_under_project: Path
     assert "schema.sql" in msg
     assert "indexes.sql" not in msg
     assert "sizing_inputs.json" not in msg
+    assert "ClaimDocumentRepository.java" in msg
 
 
 def test_initial_case_message_includes_use_case_and_relative_paths(example_case_dir: Path):
@@ -46,3 +50,5 @@ def test_system_prompt_mentions_key_artifacts():
     assert "outputs/sizing_inputs.json" in SYSTEM_PROMPT
     assert "seed.py" in SYSTEM_PROMPT
     assert "size_from_dbstats.py" in SYSTEM_PROMPT
+    assert "mongo_repository.py" in SYSTEM_PROMPT
+    assert "test_mongo_repository.py" in SYSTEM_PROMPT

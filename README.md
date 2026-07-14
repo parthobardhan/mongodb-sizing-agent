@@ -12,6 +12,7 @@ flowchart TB
     intake["intake.json<br/>productionRowCounts, notes"]
     schema["schema.sql"]
     indexes_sql["indexes.sql (optional)"]
+    legacy["legacy/ClaimDocumentRepository.java (optional)"]
   end
 
   subgraph cli ["CLI"]
@@ -31,10 +32,12 @@ flowchart TB
     p4["4 Approval<br/>user: approve → status approved"]
   end
 
-  subgraph gen ["Phase 5 (agent, post-approval)"]
+  subgraph gen ["Phase 5–7 (agent, post-approval)"]
     sizing_in["outputs/sizing_inputs.json"]
     seed_py["outputs/seed.py"]
     idx_json["outputs/mongodb_indexes.json"]
+    repo_py["outputs/mongo_repository.py"]
+    repo_test["outputs/test_mongo_repository.py"]
   end
 
   subgraph tools ["Phase 6 — deterministic tools"]
@@ -44,6 +47,7 @@ flowchart TB
     apply["apply_indexes.py"]
     size["size_from_dbstats.py"]
     report["sizing-report.json + .md"]
+    verify["pytest test_mongo_repository.py (optional)"]
     cleanup["clear_local_mongo.py (optional)"]
   end
 
@@ -56,10 +60,14 @@ flowchart TB
   run -->|"tools-only or run tools"| runner
   gen --> runner
   runner --> docker --> seed_run --> apply --> size --> report
-  report --> cleanup
+  report --> verify
+  verify --> cleanup
   sizing_in --> size
   idx_json --> apply
   seed_py --> seed_run
+  legacy --> repo_py
+  legacy --> repo_test
+  repo_test --> verify
   p2 --> dm["outputs/data-model.md"]
   dm -->|"read_approval_status gate"| runner
 ```
@@ -71,7 +79,7 @@ flowchart TB
 | `run_agent.py` | CLI entry: interactive agent loop or `--phase tools-only` |
 | `agent/session.py` | Cursor SDK lifecycle, session persistence, approval parsing |
 | `agent/prompts.py` | System prompt and per-case kickoff message |
-| `agent/tools_runner.py` | Subprocess orchestration for Docker → seed → indexes → sizing |
+| `agent/tools_runner.py` | Subprocess orchestration for Docker → seed → indexes → sizing → optional repository pytest |
 | `scripts/sizing_inputs.py` | JSON Schema validation, embedded cardinality derivation |
 | `scripts/size_from_dbstats.py` | dbStats/collStats → Atlas Disk/RAM formulas |
 | `scripts/apply_indexes.py` | Apply `mongodb_indexes.json` via PyMongo |
@@ -116,13 +124,17 @@ cases/{useCase}/
 ├── inputs/
 │   ├── intake.json          # customer: metadata, productionRowCounts, dataModelingNotes
 │   ├── schema.sql           # relational DDL (required)
-│   └── indexes.sql          # relational indexes (optional)
+│   ├── indexes.sql          # relational indexes (optional)
+│   └── legacy/              # optional legacy JDBC DAO for Phase 7 migration
+│       └── ClaimDocumentRepository.java
 └── outputs/
     ├── data-model.md        # disposition, mapping, approval status
     ├── sizing_inputs.json   # agent-generated: collection counts, embedded cardinality
     ├── session.json         # persisted agent_id for --resume
     ├── seed.py              # generated post-approval
     ├── mongodb_indexes.json # generated post-approval
+    ├── mongo_repository.py  # Phase 7: PyMongo repository (when legacy DAO present)
+    ├── test_mongo_repository.py  # Phase 7: integration tests against seeded Mongo
     ├── sizing-report.json   # from tools pipeline
     └── sizing-report.md     # rendered report
 ```
@@ -131,7 +143,7 @@ Local MongoDB databases are named `sizing_{slugified_use_case}` (e.g. `sizing_cl
 
 ## Workflow
 
-1. Create `cases/{useCase}/inputs/` with `intake.json` (include `productionRowCounts` and `dataModelingNotes` when known), `schema.sql`, optional `indexes.sql`.
+1. Create `cases/{useCase}/inputs/` with `intake.json` (include `productionRowCounts` and `dataModelingNotes` when known), `schema.sql`, optional `indexes.sql`, and optional `legacy/ClaimDocumentRepository.java` for repository migration.
 2. Run the agent:
 
 ```bash
@@ -140,7 +152,7 @@ python run_agent.py --case claim_history
 
 3. Work through intake and modeling. Agent writes `outputs/sizing_inputs.json` during the sizing gate from intake row counts and the proposed model.
 4. When `data-model.md` is ready, reply **`approve`** (switches SDK to agent mode for implementation).
-5. After approval, generate `seed.py` and `mongodb_indexes.json`, then run tools:
+5. After approval, generate `seed.py`, `mongodb_indexes.json`, and (when legacy DAO is present) `mongo_repository.py` + `test_mongo_repository.py`, then run tools:
 
 ```bash
 python run_agent.py --case _example --phase tools-only --no-cleanup
@@ -156,8 +168,8 @@ Or from an approved interactive session: type **`run tools`**, **`tools`**, or *
 | Model | Write `data-model.md` with disposition, rationale, assumptions; status **pending** |
 | Sizing gate | Agent writes `outputs/sizing_inputs.json`: `productionDocumentCount` per top-level collection; `avgCardinality` for embedded |
 | Approval | Do **not** write `seed.py`, start Docker, or run sizing until status is **approved** |
-| Generate | 500 docs per top-level collection; compound indexes only (no redundant prefixes) |
-| Tools | `verify_approved()` blocks pipeline if `data-model.md` is not approved |
+| Generate | 500 docs per top-level collection; compound indexes only (no redundant prefixes); optional legacy → PyMongo repository |
+| Tools | `verify_approved()` blocks pipeline if `data-model.md` is not approved; runs repository pytest when `test_mongo_repository.py` exists |
 
 Resume a prior session:
 
@@ -173,7 +185,7 @@ python run_agent.py --case claim_history --resume <agent_id>
 | `--case NAME` | Case folder under `cases/` (required) |
 | `--resume ID` | Resume Cursor agent by ID |
 | `--phase interactive` | Default: REPL loop with Cursor SDK |
-| `--phase tools-only` | Skip agent; run Docker → seed → indexes → sizing |
+| `--phase tools-only` | Skip agent; run Docker → seed → indexes → sizing → optional repository pytest |
 | `--cleanup` | Drop case DB immediately after sizing (tools-only) |
 | `--no-cleanup` | Skip post-sizing cleanup prompt (tools-only) |
 
@@ -183,7 +195,8 @@ python run_agent.py --case claim_history --resume <agent_id>
 |------|-------|
 | `outputs/data-model.md` | 2 — model + approval |
 | `outputs/sizing_inputs.json` | 3 — agent-derived sizing metadata |
-| `outputs/seed.py`, `mongodb_indexes.json` | 4–5 |
+| `outputs/seed.py`, `mongodb_indexes.json` | 5 |
+| `outputs/mongo_repository.py`, `test_mongo_repository.py` | 7 — legacy JDBC → PyMongo (when `inputs/legacy/*` present) |
 | `outputs/sizing-report.md`, `.json` | 6 |
 
 ## Sizing script (standalone)
@@ -231,8 +244,9 @@ pytest
 | `test_seed_contract.py` | Unit | Example `seed.py` constants (500 docs, `RANDOM_SEED`) |
 | `test_approval_gate.py` | Unit | Example `data-model.md` parses as approved |
 | `test_session.py` | Unit | Approval parsing, session I/O, API key, local options |
-| `test_prompts.py` | Unit | `initial_case_message`, system prompt |
-| `test_tools_runner_unit.py` | Unit | `verify_approved` gate |
+| `test_prompts.py` | Unit | `initial_case_message`, system prompt, legacy inputs |
+| `test_repo_contract.py` | Unit | Example `mongo_repository.py` method parity and docstrings |
+| `test_tools_runner_unit.py` | Unit | `verify_approved` gate, optional repository pytest step |
 | `test_clear_local_mongo_unit.py` | Unit | `slugify_use_case` |
 | `test_sql_index_parser.py` | Unit | SQL `CREATE INDEX` parsing |
 | `test_apply_indexes_unit.py` | Unit | `keys_to_pymongo` |
@@ -243,6 +257,7 @@ pytest
 | `test_e2e_indexes.py` | Integration | Indexes applied in MongoDB |
 | `test_e2e_cli.py` | Integration | `run_agent.py --phase tools-only`, approval block |
 | `test_e2e_approval_gate.py` | Integration | `run_tools_pipeline` rejects pending model |
+| `test_e2e_repository.py` | Integration | Legacy repository tests against seeded Mongo |
 | `test_agent_smoke.py` | Agent | Live SDK create + prompt; mocked `create_agent()` helper |
 
 ### Troubleshooting
