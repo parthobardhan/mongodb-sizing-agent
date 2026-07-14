@@ -1,0 +1,16 @@
+{
+  "useCaseName": "payment-settlement-platform",
+  "queryLatencySlaMs": 40,
+  "productionRowCounts": {
+    "PAYMENT_INSTRUCTION": 15000000,
+    "PAYMENT_ALLOCATION_LINE": 45000000,
+    "SETTLEMENT_BATCH": 6000000
+  },
+  "dataModelingNotes": "Retail and institutional payment instructions are retrieved with all allocation lines on every authorization and settlement hot path (single round trip). Allocation lines are never queried independently at volume. Settlement batches are keyed by composite natural key (instructionId, settlementRail, batchSequence) and reconciled separately from the payment header.",
+  "assumptions": [
+    "Average 3 allocation lines per payment instruction at production scale (45M / 15M).",
+    "Settlement batches are a separate bounded collection; not embedded in payment instructions."
+  ],
+  "discountPercent": null,
+  "supportUpliftPercent": null
+}
