@@ -12,6 +12,8 @@ from typing import Any
 
 from cursor_sdk import Agent, AgentOptions, CursorAgentError, LocalAgentOptions, SendOptions
 
+from agent.events import emit_event
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL = "auto"
 STUCK_RUN_WAIT_TIMEOUT_SEC = 30.0
@@ -128,16 +130,14 @@ def _send_options(mode: str | None) -> SendOptions | None:
     return SendOptions(mode=mode, model=DEFAULT_MODEL)
 
 
-def _tool_activity_line(message: Any) -> str | None:
-    """Return a short stderr line for tool-call / tool-result style messages."""
+def _tool_activity_details(message: Any) -> tuple[str, str] | None:
+    """Return (tool_name, target) for tool-call style messages."""
     msg_type = getattr(message, "type", None)
     if msg_type not in ("tool_call", "tool-call", "tool", "function_call"):
-        # Nested under assistant / tool envelopes used by some SDK shapes.
         tool_name = getattr(message, "name", None) or getattr(message, "tool_name", None)
         if tool_name and msg_type not in ("assistant", "user", "system"):
             target = getattr(message, "path", None) or getattr(message, "target", None) or ""
-            suffix = f" {target}" if target else ""
-            return f"[tool: {tool_name}{suffix}]"
+            return tool_name, target
         return None
 
     name = (
@@ -154,6 +154,15 @@ def _tool_activity_line(message: Any) -> str | None:
     )
     if not target and isinstance(getattr(message, "args", None), dict):
         target = message.args.get("path") or message.args.get("file") or ""
+    return name, target
+
+
+def _tool_activity_line(message: Any) -> str | None:
+    """Return a short stderr line for tool-call / tool-result style messages."""
+    details = _tool_activity_details(message)
+    if not details:
+        return None
+    name, target = details
     suffix = f" {target}" if target else ""
     return f"[tool: {name}{suffix}]"
 
@@ -161,9 +170,12 @@ def _tool_activity_line(message: Any) -> str | None:
 def stream_run_text(run) -> str:
     parts: list[str] = []
     for message in run.messages():
-        activity = _tool_activity_line(message)
-        if activity:
-            print(activity, file=sys.stderr, flush=True)
+        details = _tool_activity_details(message)
+        if details:
+            name, target = details
+            line = f"[tool: {name}{f' {target}' if target else ''}]"
+            print(line, file=sys.stderr, flush=True)
+            emit_event("tool_activity", tool=name, target=target, line=line)
         if getattr(message, "type", None) == "assistant":
             msg = getattr(message, "message", message)
             content = getattr(msg, "content", [])
@@ -173,9 +185,13 @@ def stream_run_text(run) -> str:
                     if text:
                         print(text, end="", flush=True)
                         parts.append(text)
-                activity = _tool_activity_line(block)
-                if activity:
-                    print(activity, file=sys.stderr, flush=True)
+                        emit_event("assistant_text", text=text)
+                details = _tool_activity_details(block)
+                if details:
+                    name, target = details
+                    line = f"[tool: {name}{f' {target}' if target else ''}]"
+                    print(line, file=sys.stderr, flush=True)
+                    emit_event("tool_activity", tool=name, target=target, line=line)
     return "".join(parts)
 
 
@@ -188,8 +204,20 @@ def send_and_wait(
     opts = _send_options(mode)
     run = agent.send(user_input, opts) if opts else agent.send(user_input)
     print(f"[run id={run.id} agent={agent.agent_id}]", file=sys.stderr)
+    emit_event(
+        "run_started",
+        run_id=run.id,
+        agent_id=agent.agent_id,
+        mode=mode,
+    )
     stream_run_text(run)
     result = run.wait()
+    emit_event(
+        "run_finished",
+        run_id=run.id,
+        agent_id=agent.agent_id,
+        status=result.status,
+    )
     if result.status == "error":
         raise CursorAgentError(
             f"Agent run failed (run id={getattr(run, 'id', '?')} status=error)"

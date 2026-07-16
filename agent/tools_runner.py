@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from agent.session import read_approval_status
+from agent.events import emit_event
 from scripts.clear_local_mongo import slugify_use_case
 from scripts.sizing_inputs import (
     database_production_document_count,
@@ -30,6 +31,15 @@ def run(
 ) -> subprocess.CompletedProcess:
     print(f"$ {' '.join(cmd)}", file=sys.stderr)
     return subprocess.run(cmd, cwd=cwd or PROJECT_ROOT, check=check, env=env)
+
+
+def _emit_pipeline_step(step: str, status: str, *, detail: str = "") -> None:
+    emit_event(
+        "pipeline_step",
+        step=step,
+        status=status,
+        detail=detail,
+    )
 
 
 def verify_approved(case_dir: Path) -> None:
@@ -74,21 +84,39 @@ def run_tools_pipeline(
     use_case = intake["useCaseName"]
     db_name = slugify_use_case(use_case)
 
-    run(["bash", "scripts/run_local_stack.sh"])
+    _emit_pipeline_step("docker_stack", "running", detail="Starting local MongoDB")
+    try:
+        run(["bash", "scripts/run_local_stack.sh"])
+        _emit_pipeline_step("docker_stack", "ok")
+    except subprocess.CalledProcessError:
+        _emit_pipeline_step("docker_stack", "fail")
+        raise
 
     seed = case_dir / "outputs" / "seed.py"
-    run([sys.executable, str(seed), "--clear", "--uri", uri])
+    _emit_pipeline_step("seed", "running", detail="500 docs per collection")
+    try:
+        run([sys.executable, str(seed), "--clear", "--uri", uri])
+        _emit_pipeline_step("seed", "ok")
+    except subprocess.CalledProcessError:
+        _emit_pipeline_step("seed", "fail")
+        raise
 
-    run(
-        [
-            sys.executable,
-            "scripts/apply_indexes.py",
-            "--uri",
-            uri,
-            "--case",
-            str(case_dir),
-        ]
-    )
+    _emit_pipeline_step("indexes", "running", detail="Applying mongodb_indexes.json")
+    try:
+        run(
+            [
+                sys.executable,
+                "scripts/apply_indexes.py",
+                "--uri",
+                uri,
+                "--case",
+                str(case_dir),
+            ]
+        )
+        _emit_pipeline_step("indexes", "ok")
+    except subprocess.CalledProcessError:
+        _emit_pipeline_step("indexes", "fail")
+        raise
 
     inputs_path = sizing_inputs_file_path(case_dir)
     if not inputs_path.is_file():
@@ -99,33 +127,45 @@ def run_tools_pipeline(
     prod_count = database_production_document_count(sizing_inputs)
 
     out_json = case_dir / "outputs" / "sizing-report.json"
-    run(
-        [
-            sys.executable,
-            "scripts/size_from_dbstats.py",
-            "--uri",
-            uri,
-            "--db",
-            db_name,
-            "--production-count",
-            str(prod_count),
-            "--sizing-inputs-file",
-            str(inputs_path),
-            "--out",
-            str(out_json),
-        ]
-    )
+    _emit_pipeline_step("sizing", "running", detail="dbStats / collStats scaling")
+    try:
+        run(
+            [
+                sys.executable,
+                "scripts/size_from_dbstats.py",
+                "--uri",
+                uri,
+                "--db",
+                db_name,
+                "--production-count",
+                str(prod_count),
+                "--sizing-inputs-file",
+                str(inputs_path),
+                "--out",
+                str(out_json),
+            ]
+        )
+        _emit_pipeline_step("sizing", "ok")
+    except subprocess.CalledProcessError:
+        _emit_pipeline_step("sizing", "fail")
+        raise
 
     repo_test = case_dir / "outputs" / "test_mongo_repository.py"
     if repo_test.is_file():
         print("Running legacy repository verification tests...", file=sys.stderr)
+        _emit_pipeline_step("repository_tests", "running", detail="pytest")
         env = os.environ.copy()
         env.setdefault("MONGODB_URI", uri)
-        run(
-            [sys.executable, "-m", "pytest", str(repo_test), "-v"],
-            cwd=PROJECT_ROOT,
-            env=env,
-        )
+        try:
+            run(
+                [sys.executable, "-m", "pytest", str(repo_test), "-v"],
+                cwd=PROJECT_ROOT,
+                env=env,
+            )
+            _emit_pipeline_step("repository_tests", "ok")
+        except subprocess.CalledProcessError:
+            _emit_pipeline_step("repository_tests", "fail")
+            raise
     else:
         print(
             "Skipping repository tests (outputs/test_mongo_repository.py not present)",
@@ -133,6 +173,7 @@ def run_tools_pipeline(
         )
 
     if cleanup:
+        _emit_pipeline_step("cleanup", "running")
         run(
             [
                 sys.executable,
@@ -143,11 +184,13 @@ def run_tools_pipeline(
                 use_case,
             ]
         )
+        _emit_pipeline_step("cleanup", "ok")
     elif not no_cleanup and out_json.is_file() and sys.stdin.isatty():
         answer = input(
             f"Clear local MongoDB database `{db_name}`? [y/N] "
         ).strip().lower()
         if answer == "y":
+            _emit_pipeline_step("cleanup", "running")
             run(
                 [
                     sys.executable,
@@ -158,5 +201,7 @@ def run_tools_pipeline(
                     use_case,
                 ]
             )
+            _emit_pipeline_step("cleanup", "ok")
 
+    emit_event("pipeline_finished", report_path=str(out_json), case=use_case)
     return out_json

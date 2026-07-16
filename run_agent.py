@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.prompts import SYSTEM_PROMPT, initial_case_message
+from agent.events import emit_event
 from scripts.sizing_inputs import validate_intake
 
 # cursor_sdk is an optional dependency: agent.session (and, transitively,
@@ -58,9 +59,21 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
     if agent_id:
         agent = resume_agent(agent_id)
         print(f"Resumed agent {agent_id}", file=sys.stderr)
+        emit_event(
+            "session_started",
+            case=use_case,
+            agent_id=agent.agent_id,
+            resumed=True,
+        )
     else:
         agent = create_agent()
         save_session(outputs, agent.agent_id)
+        emit_event(
+            "session_started",
+            case=use_case,
+            agent_id=agent.agent_id,
+            resumed=False,
+        )
 
     data_model_path = outputs / "data-model.md"
     mode = initial_send_mode(data_model_path)
@@ -77,14 +90,14 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
             save_session(outputs, agent.agent_id)
 
         while True:
+            mode = initial_send_mode(data_model_path)
             user_input = input("> ").strip()
             if not user_input:
                 continue
             if user_input.lower() in ("quit", "exit"):
                 break
 
-            if user_input.lower() == "approve":
-                mode = "agent"
+            prev_status = read_approval_status(data_model_path)
             try:
                 send_and_wait(agent, user_input, mode=mode)
             except CursorAgentError as exc:
@@ -94,6 +107,8 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
             save_session(outputs, agent.agent_id)
 
             status = read_approval_status(data_model_path)
+            if status != prev_status:
+                emit_event("approval_changed", case=use_case, status=status)
             if status == "approved" and user_input.lower() in (
                 "run tools",
                 "tools",

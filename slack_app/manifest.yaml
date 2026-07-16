@@ -1,0 +1,22 @@
+display_information:
+  name: MongoDB Sizing Agent
+  description: Posts data-model approval requests and sizing summaries for the sizing agent demo.
+  background_color: "#0d1117"
+
+features:
+  bot_user:
+    display_name: Sizing Agent
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - chat:write.public
+
+settings:
+  socket_mode_enabled: true
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false

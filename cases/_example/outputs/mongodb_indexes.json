@@ -4,7 +4,12 @@
     {
       "collection": "client_document_history",
       "keys": [["cKey", 1]],
-      "options": { "name": "cKey_1" }
+      "options": { "name": "cKey_1", "unique": true }
+    },
+    {
+      "collection": "client_document_history",
+      "keys": [["cStatus", 1]],
+      "options": { "name": "cStatus_1" }
     },
     {
       "collection": "client_release_table",

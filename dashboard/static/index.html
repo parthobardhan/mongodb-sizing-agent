@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission Control — MongoDB Sizing Agent</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="title">Mission Control</h1>
+      <span class="subtitle">MongoDB Sizing Agent</span>
+    </div>
+    <div class="topbar-center">
+      <label class="case-label" for="case-input">Case</label>
+      <input id="case-input" class="case-input" type="text" placeholder="_example" />
+      <button id="case-apply" class="btn btn-ghost" type="button">Apply</button>
+    </div>
+    <div class="topbar-right">
+      <span id="mode-badge" class="badge badge-mode">plan</span>
+      <span id="approval-badge" class="badge badge-approval">pending</span>
+      <span id="agent-id" class="mono muted">—</span>
+    </div>
+  </header>
+
+  <section class="phase-rail" id="phase-rail" aria-label="Workflow phases"></section>
+
+  <main class="layout">
+    <section class="panel feed-panel">
+      <div class="panel-header">
+        <h2>Activity</h2>
+        <span id="connection-status" class="connection disconnected">Disconnected</span>
+      </div>
+      <div id="activity-feed" class="activity-feed"></div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel artifacts-panel">
+        <div class="panel-header"><h2>Artifacts</h2></div>
+        <ul id="artifact-list" class="artifact-list"></ul>
+      </section>
+
+      <section class="panel sizing-panel" id="sizing-panel" hidden>
+        <div class="panel-header"><h2>Atlas Sizing</h2></div>
+        <div class="sizing-metrics">
+          <div class="metric">
+            <span class="metric-label">Disk required</span>
+            <span id="disk-value" class="metric-value">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">RAM required</span>
+            <span id="ram-value" class="metric-value">—</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <div id="preview-drawer" class="preview-drawer" hidden>
+    <div class="preview-header">
+      <h3 id="preview-title">Preview</h3>
+      <button id="preview-close" class="btn btn-ghost" type="button">Close</button>
+    </div>
+    <div id="preview-content" class="preview-content markdown-body"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

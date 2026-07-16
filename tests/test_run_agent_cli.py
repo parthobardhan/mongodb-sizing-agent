@@ -132,6 +132,7 @@ def test_interactive_resumes_when_session_exists(
 def test_interactive_sends_plan_mode_until_approve(
     project_root: Path, monkeypatch: pytest.MonkeyPatch
 ):
+    """Mode is read from data-model.md each loop iteration (Slack-safe)."""
     import shutil
     import uuid
 
@@ -180,7 +181,7 @@ def test_interactive_sends_plan_mode_until_approve(
                 mode="plan",
             ),
             call(mock_agent, "tweak the model", mode="plan"),
-            call(mock_agent, "approve", mode="agent"),
+            call(mock_agent, "approve", mode="plan"),
         ]
     finally:
         shutil.rmtree(case_dir, ignore_errors=True)

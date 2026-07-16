@@ -2,6 +2,11 @@
 
 Standalone Python project that uses the **Cursor SDK** (local agent) for relational → MongoDB document modeling, plus deterministic scripts for Docker seed/load, indexes, and Atlas-oriented sizing from `dbStats` / `collStats`.
 
+Optional demo integrations (both fail-safe when not running):
+
+- **[Mission Control dashboard](#demo-dashboard-mission-control)** — local web UI with live phase rail, activity feed, and artifact previews
+- **[Slack approval bot](#slack-approval-async-beat)** — Socket Mode bot for async data-model approval and sizing summaries
+
 ## Architecture
 
 The project splits **agent-driven modeling** (interactive, LLM) from **deterministic tooling** (scripts, Docker, formulas). The agent writes artifacts under `cases/{useCase}/`; the tools pipeline reads those artifacts and produces sizing numbers. Atlas Disk/RAM figures come **only** from `scripts/size_from_dbstats.py`—never from agent prose.
@@ -70,6 +75,17 @@ flowchart TB
   repo_test --> verify
   p2 --> dm["outputs/data-model.md"]
   dm -->|"read_approval_status gate"| runner
+
+  subgraph integrations ["Optional integrations"]
+    dash["dashboard/server.py<br/>Mission Control UI"]
+    slack["slack_app/bot.py<br/>Slack approval + sizing"]
+  end
+
+  session -.->|"emit_event (SSE)"| dash
+  runner -.->|"emit_event"| dash
+  slack -.->|"approve_data_model"| dm
+  slack -.->|"emit_event"| dash
+  slack -.->|"run_tools_pipeline"| runner
 ```
 
 ### Component map
@@ -80,6 +96,8 @@ flowchart TB
 | `agent/session.py` | Cursor SDK lifecycle, session persistence, approval parsing |
 | `agent/prompts.py` | System prompt and per-case kickoff message |
 | `agent/tools_runner.py` | Subprocess orchestration for Docker → seed → indexes → sizing → optional repository pytest |
+| `dashboard/server.py` | Mission control web UI: SSE events, phase state, artifact previews |
+| `slack_app/bot.py` | Slack Socket Mode bot: watches all `cases/` (or `--case`), approval + sizing posts |
 | `scripts/sizing_inputs.py` | JSON Schema validation, embedded cardinality derivation |
 | `scripts/size_from_dbstats.py` | dbStats/collStats → Atlas Disk/RAM formulas |
 | `scripts/apply_indexes.py` | Apply `mongodb_indexes.json` via PyMongo |
@@ -101,8 +119,12 @@ flowchart TB
 |----------|----------|---------|
 | `CURSOR_API_KEY` | Interactive mode | Cursor SDK local agent auth |
 | `MONGODB_URI` | Tools pipeline | Local MongoDB URI (default: `mongodb://localhost:27017`) |
+| `DASHBOARD_URL` | Optional | Event POST target for Mission Control (default: `http://localhost:8765/events`) |
+| `SLACK_BOT_TOKEN` | Slack bot | Bot User OAuth Token (`xoxb-…`) |
+| `SLACK_APP_TOKEN` | Slack bot | App-Level Token with `connections:write` (`xapp-…`) |
+| `SLACK_CHANNEL_ID` | Slack bot | Channel ID where approval requests are posted |
 
-Copy `.env.example` to `.env` and fill in values. Tools-only runs do not need `CURSOR_API_KEY`.
+Copy `.env.example` to `.env` and fill in values. Tools-only runs do not need `CURSOR_API_KEY`. Dashboard and Slack vars are only needed when running those integrations.
 
 ## Setup
 
@@ -140,6 +162,55 @@ cases/{useCase}/
 ```
 
 Local MongoDB databases are named `sizing_{slugified_use_case}` (e.g. `sizing_claims_document_history`).
+
+## Demo dashboard (Mission Control)
+
+A local web UI shows the agent working through gated phases in real time: phase rail, tool-call feed, artifact checklist, and Atlas sizing results. The CLI emits events to the dashboard; if the dashboard is not running, the agent is unaffected.
+
+**Terminal 1** — start the dashboard:
+
+```bash
+python -m dashboard.server --case _example --port 8765
+```
+
+Open [http://localhost:8765](http://localhost:8765) (or `?case=claim_history` in the URL).
+
+**Terminal 2** — run the agent or tools pipeline as usual:
+
+```bash
+python run_agent.py --case _example
+# or after approval:
+python run_agent.py --case _example --phase tools-only --no-cleanup
+```
+
+Optional: set `DASHBOARD_URL` if the server is not on `http://localhost:8765/events`.
+
+## Slack approval (async beat)
+
+A Slack bot (Socket Mode — no public URL) posts the data-model approval request with **Approve** / **Request changes** buttons, flips `data-model.md` on approve, notifies Mission Control, and posts the Atlas sizing summary when tools finish.
+
+**Setup (one time):**
+
+1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps) using [`slack_app/manifest.yaml`](slack_app/manifest.yaml) (enable Socket Mode, install to workspace).
+2. Copy **Bot User OAuth Token** → `SLACK_BOT_TOKEN`, **App-Level Token** (`connections:write`) → `SLACK_APP_TOKEN`.
+3. Invite the bot to a channel; copy channel ID → `SLACK_CHANNEL_ID` (right-click channel → View channel details).
+
+**Demo terminals:**
+
+```bash
+# Terminal 1 — dashboard
+python -m dashboard.server --case settlement
+
+# Terminal 2 — Slack bot (watches all cases/ by default)
+python -m slack_app.bot
+
+# Terminal 3 — agent (any case)
+python run_agent.py --case settlement
+```
+
+The bot polls every case folder under `cases/` and posts when **any** workload gets a new pending `data-model.md`. Pass `--case NAME` to watch a single case only. Approve buttons embed the case name, so multi-case watching works without restarting the bot.
+
+When the agent writes `data-model.md` with status **pending**, the bot posts the approval request. Tap **Approve** in Slack — the file flips to **approved**, the dashboard badge updates, and the REPL picks up agent mode on the next message. If generate artifacts already exist, the bot runs the tools pipeline and posts Disk/RAM in thread.
 
 ## Workflow
 
@@ -188,6 +259,13 @@ python run_agent.py --case claim_history --resume <agent_id>
 | `--phase tools-only` | Skip agent; run Docker → seed → indexes → sizing → optional repository pytest |
 | `--cleanup` | Drop case DB immediately after sizing (tools-only) |
 | `--no-cleanup` | Skip post-sizing cleanup prompt (tools-only) |
+
+### Dashboard and Slack CLIs
+
+| Command | Purpose |
+|---------|---------|
+| `python -m dashboard.server --case NAME [--port 8765]` | Mission Control web UI (SSE events, phase state, artifact API) |
+| `python -m slack_app.bot [--case NAME] [--channel ID]` | Slack Socket Mode bot; watches `cases/` for pending approvals |
 
 ## Artifacts
 
@@ -247,6 +325,11 @@ pytest
 | `test_prompts.py` | Unit | `initial_case_message`, system prompt, legacy inputs |
 | `test_repo_contract.py` | Unit | Example `mongo_repository.py` method parity and docstrings |
 | `test_tools_runner_unit.py` | Unit | `verify_approved` gate, optional repository pytest step |
+| `test_events_unit.py` | Unit | Dashboard `emit_event` fail-safe behavior |
+| `test_dashboard_state.py` | Unit | Phase derivation and dashboard API |
+| `test_approval_write.py` | Unit | `approve_data_model()` file writer |
+| `test_slack_blocks.py` | Unit | Slack Block Kit builders |
+| `test_slack_bot.py` | Unit | Multi-case discovery and watcher polling |
 | `test_clear_local_mongo_unit.py` | Unit | `slugify_use_case` |
 | `test_sql_index_parser.py` | Unit | SQL `CREATE INDEX` parsing |
 | `test_apply_indexes_unit.py` | Unit | `keys_to_pymongo` |
