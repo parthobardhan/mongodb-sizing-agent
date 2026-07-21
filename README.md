@@ -13,79 +13,78 @@ The project splits **agent-driven modeling** (interactive, LLM) from **determini
 
 ```mermaid
 flowchart TB
-  subgraph inputs ["cases/{useCase}/inputs"]
-    intake["intake.json<br/>productionRowCounts, notes"]
-    schema["schema.sql"]
-    indexes_sql["indexes.sql (optional)"]
-    legacy["legacy/ClaimDocumentRepository.java (optional)"]
+  subgraph inputs [cases/useCase/inputs]
+    intake[intake.json]
+    schema[schema.sql]
+    indexes_sql[indexes.sql]
+    legacy[legacy DAO]
   end
 
-  subgraph cli ["CLI"]
-    run["run_agent.py"]
+  subgraph cli [CLI]
+    run[run_agent.py]
   end
 
-  subgraph agent_layer ["Agent layer (Cursor SDK, local)"]
-    session["agent/session.py"]
-    prompts["agent/prompts.py"]
-    cursor["Cursor local agent<br/>mode: plan → agent"]
+  subgraph agent_layer [Agent layer]
+    session[agent/session.py]
+    prompts[agent/prompts.py]
+    cursor[Cursor local agent]
   end
 
-  subgraph phases ["Phases 1–4 (agent)"]
-    p1["1 Intake<br/>validate inputs, clarify embed vs reference"]
-    p2["2 Model<br/>write data-model.md (pending)"]
-    p3["3 Sizing gate<br/>write outputs/sizing_inputs.json"]
-    p4["4 Approval<br/>user: approve → status approved"]
+  subgraph phases [Phases 1-4]
+    p1[1 Intake]
+    p2[2 Model]
+    p3[3 Sizing gate]
+    p4[4 Approval]
   end
 
-  subgraph gen ["Phase 5–7 (agent, post-approval)"]
-    sizing_in["outputs/sizing_inputs.json"]
-    seed_py["outputs/seed.py"]
-    idx_json["outputs/mongodb_indexes.json"]
-    repo_py["outputs/mongo_repository.py"]
-    repo_test["outputs/test_mongo_repository.py"]
+  subgraph gen [Phase 5-7 artifacts]
+    sizing_in[sizing_inputs.json]
+    seed_py[seed.py]
+    idx_json[mongodb_indexes.json]
+    repo_py[mongo_repository.py]
+    repo_test[test_mongo_repository.py]
   end
 
-  subgraph tools ["Phase 6 — deterministic tools"]
-    runner["agent/tools_runner.py"]
-    docker["run_local_stack.sh<br/>docker compose mongo:8"]
-    seed_run["seed.py → 500 docs/collection"]
-    apply["apply_indexes.py"]
-    size["size_from_dbstats.py"]
-    report["sizing-report.json + .md"]
-    verify["pytest test_mongo_repository.py (optional)"]
-    cleanup["clear_local_mongo.py (optional)"]
+  subgraph tools [Phase 6 tools]
+    runner[tools_runner.py]
+    docker[run_local_stack.sh]
+    seed_run[seed]
+    apply[apply_indexes.py]
+    size[size_from_dbstats.py]
+    report[sizing-report]
+    verify[pytest]
+    cleanup[cleanup]
   end
 
   inputs --> run
-  run -->|"interactive"| session
+  run -->|interactive| session
   session --> cursor
   prompts --> cursor
   cursor --> p1 --> p2 --> p3 --> p4
-  p4 -->|"approve"| gen
-  run -->|"tools-only or run tools"| runner
+  p4 -->|approve| gen
+  run -->|tools-only| runner
   gen --> runner
   runner --> docker --> seed_run --> apply --> size --> report
-  report --> verify
-  verify --> cleanup
+  report --> verify --> cleanup
   sizing_in --> size
   idx_json --> apply
   seed_py --> seed_run
   legacy --> repo_py
   legacy --> repo_test
   repo_test --> verify
-  p2 --> dm["outputs/data-model.md"]
-  dm -->|"read_approval_status gate"| runner
+  p2 --> dm[data-model.md]
+  dm -->|approval gate| runner
 
-  subgraph integrations ["Optional integrations"]
-    dash["dashboard/server.py<br/>Mission Control UI"]
-    slack["slack_app/bot.py<br/>Slack approval + sizing"]
+  subgraph integrations [Optional integrations]
+    dash[Mission Control]
+    slack[Slack bot]
   end
 
-  session -.->|"emit_event (SSE)"| dash
-  runner -.->|"emit_event"| dash
-  slack -.->|"approve_data_model"| dm
-  slack -.->|"emit_event"| dash
-  slack -.->|"run_tools_pipeline"| runner
+  session -.->|SSE events| dash
+  runner -.->|SSE events| dash
+  slack -.->|approve| dm
+  slack -.->|SSE events| dash
+  slack -.->|run tools| runner
 ```
 
 ### Component map
@@ -210,10 +209,20 @@ python run_agent.py --case settlement
 
 The bot polls every case folder under `cases/` and posts when **any** workload gets a new pending `data-model.md`. Pass `--case NAME` to watch a single case only. Approve buttons embed the case name, so multi-case watching works without restarting the bot.
 
-When the agent writes `data-model.md` with status **pending**, the bot posts the approval request. Tap **Approve** in Slack — the file flips to **approved**, the dashboard badge updates, and the REPL picks up agent mode on the next message. If generate artifacts already exist, the bot runs the tools pipeline and posts Disk/RAM in thread.
+When the agent writes `data-model.md` with status **pending**, the bot posts the approval request. Tap **Approve** in Slack — the file flips to **approved**, the dashboard badge updates, and the REPL picks up agent mode on the next message. If generate artifacts are missing, the bot resumes the case Cursor agent (`outputs/session.json`) in agent mode to write them; if they already exist (or after generation finishes), it runs the tools pipeline and posts Disk/RAM in thread.
 
 ## Workflow
 
+```mermaid
+flowchart LR
+  intake[1 Intake] --> model[2 Model]
+  model --> sizing[3 Sizing gate]
+  sizing --> approval{4 Approval}
+  approval -->|approve| generate[5 Generate]
+  generate --> tools[6 Tools]
+  tools --> legacy[7 Legacy migration]
+  approval -.->|pending| model
+```
 1. Create `cases/{useCase}/inputs/` with `intake.json` (include `productionRowCounts` and `dataModelingNotes` when known), `schema.sql`, optional `indexes.sql`, and optional `legacy/ClaimDocumentRepository.java` for repository migration.
 2. Run the agent:
 

@@ -19,6 +19,7 @@ CASES_ROOT = PROJECT_ROOT / "cases"
 load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.approval import approve_data_model
+from agent.continue_after_approval import continue_generate_after_approval
 from agent.events import emit_event
 from agent.session import read_approval_status
 from agent.tools_runner import missing_tools_artifacts, run_tools_pipeline
@@ -238,6 +239,80 @@ class CaseWatcher:
 
         threading.Thread(target=_run, daemon=True).start()
 
+    def run_continue_async(
+        self,
+        case_name: str,
+        thread_ts: str | None,
+        *,
+        approver: str,
+    ) -> None:
+        """Resume Cursor agent to generate Phase 5 artifacts, then run tools if ready."""
+
+        def _run() -> None:
+            case_dir = case_dir_for(case_name)
+            if thread_ts:
+                _safe_post_thread(
+                    self.client,
+                    self.channel_id,
+                    thread_ts,
+                    "Resuming Cursor agent in agent mode to generate Phase 5 artifacts…",
+                )
+            try:
+                result = continue_generate_after_approval(
+                    case_dir,
+                    approver=approver,
+                    use_case=case_name,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Agent continuation failed for %s: %s", case_name, exc
+                )
+                if thread_ts:
+                    _safe_post_thread(
+                        self.client,
+                        self.channel_id,
+                        thread_ts,
+                        f"Agent continuation failed: {exc}",
+                    )
+                return
+
+            if result.status == "no_session":
+                if thread_ts:
+                    _safe_post_thread(
+                        self.client,
+                        self.channel_id,
+                        thread_ts,
+                        result.error
+                        or "Cannot resume Cursor agent: no session.json agent_id.",
+                    )
+                return
+
+            if result.status == "error":
+                if thread_ts:
+                    _safe_post_thread(
+                        self.client,
+                        self.channel_id,
+                        thread_ts,
+                        f"Agent continuation failed: {result.error}",
+                    )
+                return
+
+            if result.status == "still_missing":
+                names = ", ".join(result.missing)
+                if thread_ts:
+                    _safe_post_thread(
+                        self.client,
+                        self.channel_id,
+                        thread_ts,
+                        f"Generate artifacts still missing after agent run: {names}. "
+                        "Fix generation or re-approve once files exist.",
+                    )
+                return
+
+            self.run_tools_async(case_name, thread_ts)
+
+        threading.Thread(target=_run, daemon=True).start()
+
 
 def create_app(channel_id: str, *, case_filter: str | None = None) -> tuple[Any, CaseWatcher]:
     from slack_bolt import App
@@ -302,13 +377,10 @@ def create_app(channel_id: str, *, case_filter: str | None = None) -> tuple[Any,
         if not missing:
             watcher.run_tools_async(resolved_case, thread_ts=ts)
         else:
-            names = ", ".join(p.name for p in missing)
-            _safe_post_thread(
-                client,
-                channel,
-                ts,
-                f"Approved. Agent will generate artifacts next (missing: {names}). "
-                "Sizing summary will post here when the tools pipeline completes.",
+            watcher.run_continue_async(
+                resolved_case,
+                thread_ts=ts,
+                approver=approver,
             )
 
     @app.action(ACTION_REQUEST_CHANGES)

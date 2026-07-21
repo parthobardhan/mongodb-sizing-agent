@@ -33,7 +33,7 @@ class EventPayload(BaseModel):
     model_config = {"extra": "allow"}
 
 
-app = FastAPI(title="MongoDB Sizing Agent — Mission Control")
+app = FastAPI(title="Legacy Modernization Agent — Monitoring")
 
 
 def _broadcast(event: dict[str, Any]) -> None:
