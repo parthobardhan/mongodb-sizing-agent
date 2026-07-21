@@ -1,0 +1,208 @@
+{
+  "collections": {
+    "organizations": {
+      "anchorTable": "ORGANIZATION",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 4200
+    },
+    "customers": {
+      "anchorTable": "CUSTOMER",
+      "disposition": "anchor",
+      "productionDocumentCount": 2800000
+    },
+    "products": {
+      "anchorTable": "PRODUCT",
+      "disposition": "anchor",
+      "productionDocumentCount": 18500000
+    },
+    "product_categories": {
+      "anchorTable": "PRODUCT_CATEGORY",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 48000
+    },
+    "product_category_map": {
+      "anchorTable": "PRODUCT_CATEGORY_MAP",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 74000000
+    },
+    "customer_contracts": {
+      "anchorTable": "CUSTOMER_CONTRACT",
+      "disposition": "anchor",
+      "productionDocumentCount": 1200000
+    },
+    "orders": {
+      "anchorTable": "ORDER_HEADER",
+      "disposition": "anchor",
+      "productionDocumentCount": 950000000
+    },
+    "shipments": {
+      "anchorTable": "SHIPMENT",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 780000000
+    },
+    "shipment_events": {
+      "anchorTable": "SHIPMENT_EVENT",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 9600000000
+    },
+    "inventory_positions": {
+      "anchorTable": "INVENTORY_POSITION",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 140000000
+    },
+    "inventory_reservations": {
+      "anchorTable": "INVENTORY_RESERVATION",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 520000000
+    },
+    "payments": {
+      "anchorTable": "PAYMENT",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 620000000
+    },
+    "invoices": {
+      "anchorTable": "INVOICE",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 580000000
+    },
+    "promotions": {
+      "anchorTable": "PROMOTION",
+      "disposition": "anchor",
+      "productionDocumentCount": 180000
+    },
+    "order_tags": {
+      "anchorTable": "ORDER_TAG",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 12000
+    },
+    "return_requests": {
+      "anchorTable": "RETURN_REQUEST",
+      "disposition": "anchor",
+      "productionDocumentCount": 42000000
+    }
+  },
+  "embedded": {
+    "CUSTOMER_ADDRESS": {
+      "embeddedInCollection": "customers",
+      "parentTable": "CUSTOMER",
+      "avgCardinality": 3.25,
+      "ratioLabel": "2800000:9100000",
+      "derivedFrom": {
+        "parentProductionCount": 2800000,
+        "childProductionCount": 9100000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "PRODUCT_VARIANT": {
+      "embeddedInCollection": "products",
+      "parentTable": "PRODUCT",
+      "avgCardinality": 3.35,
+      "ratioLabel": "18500000:62000000",
+      "derivedFrom": {
+        "parentProductionCount": 18500000,
+        "childProductionCount": 62000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "CONTRACT_PRICE_LINE": {
+      "embeddedInCollection": "customer_contracts",
+      "parentTable": "CUSTOMER_CONTRACT",
+      "avgCardinality": 40,
+      "ratioLabel": "1200000:48000000",
+      "derivedFrom": {
+        "parentProductionCount": 1200000,
+        "childProductionCount": 48000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "ORDER_LINE": {
+      "embeddedInCollection": "orders",
+      "parentTable": "ORDER_HEADER",
+      "avgCardinality": 4.42,
+      "ratioLabel": "950000000:4200000000",
+      "derivedFrom": {
+        "parentProductionCount": 950000000,
+        "childProductionCount": 4200000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "ORDER_STATUS_HISTORY": {
+      "embeddedInCollection": "orders",
+      "parentTable": "ORDER_HEADER",
+      "avgCardinality": 4,
+      "ratioLabel": "950000000:3800000000",
+      "derivedFrom": {
+        "parentProductionCount": 950000000,
+        "childProductionCount": 3800000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "ORDER_TAG_MAP": {
+      "embeddedInCollection": "orders",
+      "parentTable": "ORDER_HEADER",
+      "avgCardinality": 2,
+      "ratioLabel": "950000000:1900000000",
+      "derivedFrom": {
+        "parentProductionCount": 950000000,
+        "childProductionCount": 1900000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "SHIPMENT_OPEN_SUMMARY": {
+      "embeddedInCollection": "orders",
+      "parentTable": "ORDER_HEADER",
+      "avgCardinality": 1,
+      "ratioLabel": "950000000:780000000",
+      "derivedFrom": {
+        "parentProductionCount": 950000000,
+        "childProductionCount": 780000000,
+        "method": "childProductionCount / parentProductionCount (rounded; non-terminal subset)"
+      }
+    },
+    "SHIPMENT_PACKAGE": {
+      "embeddedInCollection": "shipments",
+      "parentTable": "SHIPMENT",
+      "avgCardinality": 2.69,
+      "ratioLabel": "780000000:2100000000",
+      "derivedFrom": {
+        "parentProductionCount": 780000000,
+        "childProductionCount": 2100000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "SHIPMENT_EVENT_RECENT": {
+      "embeddedInCollection": "shipments",
+      "parentTable": "SHIPMENT",
+      "avgCardinality": 5,
+      "ratioLabel": "UI cap (full stream in shipment_events)",
+      "derivedFrom": {
+        "parentProductionCount": 780000000,
+        "childProductionCount": 9600000000,
+        "method": "min(5, childProductionCount / parentProductionCount) for UI inline display"
+      }
+    },
+    "PROMOTION_PRODUCT": {
+      "embeddedInCollection": "promotions",
+      "parentTable": "PROMOTION",
+      "avgCardinality": 13.33,
+      "ratioLabel": "180000:2400000",
+      "derivedFrom": {
+        "parentProductionCount": 180000,
+        "childProductionCount": 2400000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    },
+    "RETURN_LINE": {
+      "embeddedInCollection": "return_requests",
+      "parentTable": "RETURN_REQUEST",
+      "avgCardinality": 2.33,
+      "ratioLabel": "42000000:98000000",
+      "derivedFrom": {
+        "parentProductionCount": 42000000,
+        "childProductionCount": 98000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    }
+  },
+  "databaseProductionDocumentCount": 13328764200
+}
