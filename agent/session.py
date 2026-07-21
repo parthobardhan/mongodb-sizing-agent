@@ -168,10 +168,27 @@ def _tool_activity_line(message: Any) -> str | None:
 
 
 def stream_run_text(run) -> str:
+    """Stream tokens to the terminal; emit one dashboard event per assistant segment.
+
+    Token deltas are buffered and flushed as a single ``assistant_text`` event
+    when a tool call arrives or the run message stream ends, so the UI shows
+    whole paragraphs instead of one card per word.
+    """
     parts: list[str] = []
+    pending: list[str] = []
+    run_id = getattr(run, "id", None)
+
+    def flush_assistant_text() -> None:
+        if not pending:
+            return
+        text = "".join(pending)
+        pending.clear()
+        emit_event("assistant_text", text=text, run_id=run_id)
+
     for message in run.messages():
         details = _tool_activity_details(message)
         if details:
+            flush_assistant_text()
             name, target = details
             line = f"[tool: {name}{f' {target}' if target else ''}]"
             print(line, file=sys.stderr, flush=True)
@@ -185,13 +202,15 @@ def stream_run_text(run) -> str:
                     if text:
                         print(text, end="", flush=True)
                         parts.append(text)
-                        emit_event("assistant_text", text=text)
+                        pending.append(text)
                 details = _tool_activity_details(block)
                 if details:
+                    flush_assistant_text()
                     name, target = details
                     line = f"[tool: {name}{f' {target}' if target else ''}]"
                     print(line, file=sys.stderr, flush=True)
                     emit_event("tool_activity", tool=name, target=target, line=line)
+    flush_assistant_text()
     return "".join(parts)
 
 

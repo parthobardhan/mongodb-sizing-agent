@@ -168,6 +168,44 @@
     }
   }
 
+  // Append consecutive assistant_text events into one card (defensive if
+  // the agent still emits token deltas; session.py normally buffers first).
+  let assistantBodyEl = null;
+
+  function appendAssistantText(event) {
+    const text = event.text || "";
+    if (!text) return;
+
+    if (assistantBodyEl) {
+      assistantBodyEl.textContent += text;
+      els.activityFeed.scrollTop = els.activityFeed.scrollHeight;
+      return;
+    }
+
+    const card = document.createElement("div");
+    card.className = "event-card assistant";
+    card.innerHTML =
+      '<div class="event-meta">' +
+      formatTime(event.ts) +
+      " · assistant</div>" +
+      '<div class="event-body assistant-body"></div>';
+    assistantBodyEl = card.querySelector(".event-body");
+    assistantBodyEl.textContent = text;
+    els.activityFeed.appendChild(card);
+    els.activityFeed.scrollTop = els.activityFeed.scrollHeight;
+  }
+
+  function handleStreamEvent(event) {
+    const type = event.type || "event";
+    if (type === "assistant_text") {
+      appendAssistantText(event);
+      return;
+    }
+    // Any non-text event closes the current assistant card.
+    assistantBodyEl = null;
+    appendEventCard(event);
+  }
+
   function appendEventCard(event) {
     const card = document.createElement("div");
     const type = event.type || "event";
@@ -179,10 +217,6 @@
       cardClass += " tool";
       meta = "tool · " + (event.tool || event.name || "unknown");
       body = event.target || event.path || event.line || "";
-    } else if (type === "assistant_text") {
-      cardClass += " assistant";
-      meta = "assistant";
-      body = event.text || "";
     } else if (type === "pipeline_step") {
       const st = event.status || "running";
       cardClass += " pipeline " + st;
@@ -226,9 +260,7 @@
       " · " +
       meta +
       "</div>" +
-      '<div class="event-body' +
-      (type === "assistant_text" ? " truncate" : "") +
-      '">' +
+      '<div class="event-body">' +
       escapeHtml(body) +
       "</div>";
     els.activityFeed.appendChild(card);
@@ -250,7 +282,7 @@
     source.onmessage = function (msg) {
       try {
         const event = JSON.parse(msg.data);
-        appendEventCard(event);
+        handleStreamEvent(event);
         if (
           event.type === "pipeline_finished" ||
           event.type === "approval_changed" ||

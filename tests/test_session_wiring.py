@@ -119,19 +119,65 @@ def test_send_and_wait_raises_on_error_status():
 
 
 def test_stream_run_text_concatenates_assistant_blocks():
-    block1 = MagicMock(type="text", text="Hello ")
-    block2 = MagicMock(type="text", text="world")
-    msg = MagicMock(content=[block1, block2])
-    assistant = MagicMock(type="assistant", message=msg)
-    other = MagicMock(type="user", message=MagicMock(content=[]))
+    from types import SimpleNamespace
+
+    # Use SimpleNamespace so MagicMock auto-attrs (name/path) do not look like tools.
+    block1 = SimpleNamespace(type="text", text="Hello ")
+    block2 = SimpleNamespace(type="text", text="world")
+    msg = SimpleNamespace(content=[block1, block2])
+    assistant = SimpleNamespace(type="assistant", message=msg)
+    other = SimpleNamespace(type="user", message=SimpleNamespace(content=[]))
 
     run = MagicMock()
+    run.id = "run-abc"
     run.messages.return_value = [other, assistant]
 
     with patch("builtins.print"):
-        text = stream_run_text(run)
+        with patch("agent.session.emit_event") as mock_emit:
+            text = stream_run_text(run)
 
     assert text == "Hello world"
+    mock_emit.assert_called_once_with(
+        "assistant_text", text="Hello world", run_id="run-abc"
+    )
+
+
+def test_stream_run_text_flushes_before_tool_activity():
+    from types import SimpleNamespace
+
+    # Use SimpleNamespace so MagicMock auto-attrs (name/path) do not look like tools.
+    block = SimpleNamespace(type="text", text="Planning…")
+    assistant = SimpleNamespace(
+        type="assistant",
+        message=SimpleNamespace(content=[block]),
+    )
+    tool_msg = SimpleNamespace(
+        type="tool_call",
+        name="Write",
+        path="cases/_example/outputs/data-model.md",
+        args={},
+    )
+    run = MagicMock()
+    run.id = "run-xyz"
+    run.messages.return_value = [assistant, tool_msg]
+
+    with patch("builtins.print"):
+        with patch("agent.session.emit_event") as mock_emit:
+            text = stream_run_text(run)
+
+    assert text == "Planning…"
+    assert mock_emit.call_count == 2
+    assert mock_emit.call_args_list[0].args[0] == "assistant_text"
+    assert mock_emit.call_args_list[0].kwargs == {
+        "text": "Planning…",
+        "run_id": "run-xyz",
+    }
+    assert mock_emit.call_args_list[1].args[0] == "tool_activity"
+    assert mock_emit.call_args_list[1].kwargs["tool"] == "Write"
+    assert (
+        mock_emit.call_args_list[1].kwargs["target"]
+        == "cases/_example/outputs/data-model.md"
+    )
 
 
 def test_stream_run_text_prints_tool_activity():

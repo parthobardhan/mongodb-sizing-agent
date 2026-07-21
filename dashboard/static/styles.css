@@ -311,9 +311,9 @@ body {
   word-break: break-word;
 }
 
-.event-body.truncate {
-  max-height: 6rem;
-  overflow: hidden;
+.event-body.assistant-body {
+  max-height: 24rem;
+  overflow-y: auto;
 }
 
 .sidebar {
