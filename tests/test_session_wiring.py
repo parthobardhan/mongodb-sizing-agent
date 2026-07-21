@@ -145,8 +145,12 @@ def test_stream_run_text_concatenates_assistant_blocks():
 def test_stream_run_text_flushes_before_tool_activity():
     from types import SimpleNamespace
 
-    block = MagicMock(type="text", text="Planning…")
-    assistant = MagicMock(type="assistant", message=MagicMock(content=[block]))
+    # Use SimpleNamespace so MagicMock auto-attrs (name/path) do not look like tools.
+    block = SimpleNamespace(type="text", text="Planning…")
+    assistant = SimpleNamespace(
+        type="assistant",
+        message=SimpleNamespace(content=[block]),
+    )
     tool_msg = SimpleNamespace(
         type="tool_call",
         name="Write",
@@ -162,12 +166,18 @@ def test_stream_run_text_flushes_before_tool_activity():
             text = stream_run_text(run)
 
     assert text == "Planning…"
+    assert mock_emit.call_count == 2
     assert mock_emit.call_args_list[0].args[0] == "assistant_text"
     assert mock_emit.call_args_list[0].kwargs == {
         "text": "Planning…",
         "run_id": "run-xyz",
     }
     assert mock_emit.call_args_list[1].args[0] == "tool_activity"
+    assert mock_emit.call_args_list[1].kwargs["tool"] == "Write"
+    assert (
+        mock_emit.call_args_list[1].kwargs["target"]
+        == "cases/_example/outputs/data-model.md"
+    )
 
 
 def test_stream_run_text_prints_tool_activity():
