@@ -1,0 +1,26 @@
+{
+  "database": "sizing_claims_document_history",
+  "indexes": [
+    {
+      "collection": "client_document_history",
+      "keys": [["cKey", 1]],
+      "options": {
+        "name": "cKey_1",
+        "unique": true
+      }
+    },
+    {
+      "collection": "client_release_table",
+      "keys": [["cKey", 1], ["cKey_Type", 1], ["cCopy_Number", 1]],
+      "options": {
+        "name": "cKey_cKey_Type_cCopy_Number",
+        "unique": true
+      },
+      "prefix_coverage": [
+        "cKey",
+        "cKey + cKey_Type",
+        "cKey + cKey_Type + cCopy_Number"
+      ]
+    }
+  ]
+}
