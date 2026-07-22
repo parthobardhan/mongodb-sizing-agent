@@ -48,6 +48,7 @@ Run/test commands (see README "Tests" and "Workflow" for the full list):
 - Unit + wiring: `.venv/bin/python -m pytest -m "not integration and not agent"` (no Docker/API key).
 - Integration: `.venv/bin/python -m pytest -m integration` (needs Docker+Mongo).
 - Dashboard (optional, fail-safe): `.venv/bin/python -m dashboard.server --case _example --port 8765` → http://localhost:8765.
+- Slack bot (optional, local): `bash scripts/run_slack_bot.sh` (requires `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `SLACK_CHANNEL_ID` in `.env`).
 
 Notes:
 - Interactive agent mode and `pytest -m agent` require `CURSOR_API_KEY` (not set in this environment); the `_example` case ships pre-built approved artifacts so the tools pipeline and integration tests run without it.

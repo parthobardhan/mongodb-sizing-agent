@@ -201,7 +201,8 @@ A Slack bot (Socket Mode — no public URL) posts the data-model approval reques
 python -m dashboard.server --case settlement
 
 # Terminal 2 — Slack bot (watches all cases/ by default)
-python -m slack_app.bot
+bash scripts/run_slack_bot.sh
+# or: .venv/bin/python -m slack_app.bot
 
 # Terminal 3 — agent (any case)
 python run_agent.py --case settlement
