@@ -1,6 +1,6 @@
 # Data model: claims-document-history
 
-**Approval status:** pending
+**Approval status:** approved
 
 ## 1. Use case summary
 
@@ -105,5 +105,5 @@ Three relational tables collapse to two MongoDB collections. Embedding detail li
 
 ## 10. Approval
 
-- Status: **pending**
-- Approved at: —
+- Status: **approved**
+- Approved at: 2026-07-22T15:58:32Z
