@@ -1,0 +1,28 @@
+{
+  "collections": {
+    "client_document_history": {
+      "anchorTable": "CLIENT_DOCUMENT_HISTORY",
+      "disposition": "anchor",
+      "productionDocumentCount": 12000000
+    },
+    "client_release_table": {
+      "anchorTable": "CLIENT_RELEASE_TABLE",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 8000000
+    }
+  },
+  "embedded": {
+    "CLIENT_DOCUMENT_DETAIL_HISTORY": {
+      "embeddedInCollection": "client_document_history",
+      "parentTable": "CLIENT_DOCUMENT_HISTORY",
+      "avgCardinality": 5,
+      "ratioLabel": "12000000:60000000",
+      "derivedFrom": {
+        "parentProductionCount": 12000000,
+        "childProductionCount": 60000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    }
+  },
+  "databaseProductionDocumentCount": 20000000
+}
