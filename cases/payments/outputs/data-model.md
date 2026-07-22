@@ -1,6 +1,6 @@
 # Data model: payment-settlement-platform
 
-**Approval status:** pending
+**Approval status:** approved
 
 ## 1. Use case summary
 
@@ -120,5 +120,5 @@ Three relational tables collapse to two MongoDB collections. Embedding allocatio
 
 ## 10. Approval
 
-- Status: **pending**
-- Reply `approve` to proceed with seed generation, indexes, local sizing, and legacy repository migration.
+- Status: **approved**
+- Approved at: 2026-07-22T17:13:00Z
