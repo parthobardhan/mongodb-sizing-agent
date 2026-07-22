@@ -1,0 +1,28 @@
+{
+  "collections": {
+    "payment_instruction": {
+      "anchorTable": "PAYMENT_INSTRUCTION",
+      "disposition": "anchor",
+      "productionDocumentCount": 15000000
+    },
+    "settlement_batch": {
+      "anchorTable": "SETTLEMENT_BATCH",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 6000000
+    }
+  },
+  "embedded": {
+    "PAYMENT_ALLOCATION_LINE": {
+      "embeddedInCollection": "payment_instruction",
+      "parentTable": "PAYMENT_INSTRUCTION",
+      "avgCardinality": 3,
+      "ratioLabel": "15000000:45000000",
+      "derivedFrom": {
+        "parentProductionCount": 15000000,
+        "childProductionCount": 45000000,
+        "method": "childProductionCount / parentProductionCount"
+      }
+    }
+  },
+  "databaseProductionDocumentCount": 21000000
+}
