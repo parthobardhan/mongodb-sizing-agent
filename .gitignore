@@ -15,6 +15,9 @@ cases/*/outputs/
 !cases/_example/outputs/
 !cases/_example/outputs/**
 cases/_example/outputs/session.json
+!cases/payments/outputs/
+!cases/payments/outputs/**
+cases/payments/outputs/session.json
 
 # Session state
 cases/*/outputs/session.json
