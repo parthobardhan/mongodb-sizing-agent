@@ -9,7 +9,7 @@ import os
 import random
 import sys
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -38,7 +38,7 @@ TEMPLATE_INSTRUCTION = {
     "currencyCode": "USD",
     "totalAmount": 15000.0000,
     "instructionStatus": "AU",
-    "valueDate": date(2026, 7, 23),
+    "valueDate": datetime(2026, 7, 23, tzinfo=timezone.utc),
     "createdAt": datetime(2026, 7, 23, 10, 0, tzinfo=timezone.utc),
     "allocationLines": [
         {
@@ -76,7 +76,9 @@ def randomize_instruction(doc: dict, i: int, rng: random.Random) -> dict:
     out["paymentReference"] = f"PMT-2026-{i:06d}"
     out["currencyCode"] = rng.choice(CURRENCIES)
     out["instructionStatus"] = rng.choice(INSTRUCTION_STATUSES)
-    out["valueDate"] = date(2026, 1, 1) + timedelta(days=rng.randint(0, 200))
+    out["valueDate"] = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(
+        days=rng.randint(0, 200)
+    )
     out["createdAt"] = datetime.now(timezone.utc) - timedelta(days=rng.randint(0, 365))
 
     n_lines = max(1, int(rng.gauss(EMBEDDED_AVG_CARDINALITY, 1)))
