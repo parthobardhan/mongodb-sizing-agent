@@ -1,0 +1,42 @@
+{
+  "database": "sizing_payment_settlement_platform",
+  "indexes": [
+    {
+      "collection": "payment_instructions",
+      "keys": [["instructionId", 1]],
+      "options": { "name": "instructionId_1", "unique": true }
+    },
+    {
+      "collection": "payment_instructions",
+      "keys": [["accountId", 1], ["instructionStatus", 1]],
+      "options": { "name": "accountId_1_instructionStatus_1" }
+    },
+    {
+      "collection": "payment_instructions",
+      "keys": [["instructionStatus", 1]],
+      "options": { "name": "instructionStatus_1" }
+    },
+    {
+      "collection": "settlement_batches",
+      "keys": [
+        ["instructionId", 1],
+        ["settlementRail", 1],
+        ["batchSequence", 1]
+      ],
+      "options": {
+        "name": "instructionId_1_settlementRail_1_batchSequence_1",
+        "unique": true
+      },
+      "prefix_coverage": [
+        "instructionId",
+        "instructionId + settlementRail",
+        "instructionId + settlementRail + batchSequence"
+      ]
+    },
+    {
+      "collection": "settlement_batches",
+      "keys": [["settlementRail", 1], ["settlementStatus", 1]],
+      "options": { "name": "settlementRail_1_settlementStatus_1" }
+    }
+  ]
+}
