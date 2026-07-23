@@ -10,11 +10,14 @@ htmlcov/
 dist/
 *.egg-info/
 
-# Case outputs (commit _example artifacts for smoke tests)
+# Case outputs (commit _example and in-progress case artifacts for smoke tests)
 cases/*/outputs/
 !cases/_example/outputs/
 !cases/_example/outputs/**
+!cases/payments/outputs/
+!cases/payments/outputs/**
 cases/_example/outputs/session.json
+cases/payments/outputs/session.json
 
 # Session state
 cases/*/outputs/session.json
