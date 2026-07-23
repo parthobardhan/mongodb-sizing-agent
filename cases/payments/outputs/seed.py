@@ -65,7 +65,7 @@ TEMPLATE_SETTLEMENT = {
 
 
 def make_instruction_id(i: int) -> str:
-    return f"PAY20260722{str(i).zfill(13)}"
+    return f"PAY20260722{str(i).zfill(11)}"
 
 
 def make_account_id(i: int) -> str:
