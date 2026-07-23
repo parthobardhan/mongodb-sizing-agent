@@ -10,7 +10,6 @@ import random
 import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -37,7 +36,7 @@ TEMPLATE_INSTRUCTION = {
     "accountId": "ACC-0000123456",
     "paymentReference": "PMT-2026-000001",
     "currencyCode": "USD",
-    "totalAmount": Decimal("15000.0000"),
+    "totalAmount": 15000.0000,
     "instructionStatus": "AU",
     "valueDate": date(2026, 7, 23),
     "createdAt": datetime(2026, 7, 23, 10, 0, tzinfo=timezone.utc),
@@ -45,13 +44,13 @@ TEMPLATE_INSTRUCTION = {
         {
             "lineNumber": 1,
             "beneficiaryAccount": "GB82WEST12345698765432",
-            "allocationAmount": Decimal("10000.0000"),
+            "allocationAmount": 10000.0000,
             "costCenter": "CC-OPS-01",
         },
         {
             "lineNumber": 2,
             "beneficiaryAccount": "DE89370400440532013000",
-            "allocationAmount": Decimal("5000.0000"),
+            "allocationAmount": 5000.0000,
             "costCenter": "CC-OPS-02",
         },
     ],
@@ -82,9 +81,9 @@ def randomize_instruction(doc: dict, i: int, rng: random.Random) -> dict:
 
     n_lines = max(1, int(rng.gauss(EMBEDDED_AVG_CARDINALITY, 1)))
     lines = []
-    remaining = Decimal("0")
+    remaining = 0.0
     for ln in range(1, n_lines + 1):
-        amount = Decimal(str(round(rng.uniform(100, 10000), 4)))
+        amount = round(rng.uniform(100, 10000), 4)
         lines.append(
             {
                 "lineNumber": ln,
