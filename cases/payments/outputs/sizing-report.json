@@ -1,0 +1,67 @@
+{
+  "dbStats": {
+    "db": "sizing_payment_settlement_platform",
+    "collections": 2,
+    "views": 0,
+    "objects": 1000,
+    "avgObjSize": 372.518,
+    "dataSize": 372518.0,
+    "storageSize": 131072.0,
+    "indexes": 7,
+    "indexSize": 155648.0,
+    "totalSize": 286720.0,
+    "scaleFactor": 1,
+    "fsUsedSize": 18533478400.0,
+    "fsTotalSize": 270436077568.0,
+    "ok": 1.0
+  },
+  "collections": [
+    {
+      "name": "settlement_batch",
+      "ns": "sizing_payment_settlement_platform.settlement_batch",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 165,
+        "size": 82500,
+        "storageSize": 32768,
+        "totalIndexSize": 65536
+      },
+      "anchorTable": "SETTLEMENT_BATCH",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 6000000,
+      "dataSizeProduction": 990000000.0,
+      "indexSizeProduction": 786432000.0
+    },
+    {
+      "name": "payment_instruction",
+      "ns": "sizing_payment_settlement_platform.payment_instruction",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 580,
+        "size": 290018,
+        "storageSize": 98304,
+        "totalIndexSize": 90112
+      },
+      "anchorTable": "PAYMENT_INSTRUCTION",
+      "disposition": "anchor",
+      "productionDocumentCount": 15000000,
+      "dataSizeProduction": 8700540000.0,
+      "indexSizeProduction": 2703360000.0
+    }
+  ],
+  "databaseProductionDocumentCount": 21000000,
+  "databaseScaling": {
+    "compression": 0.6481458614080393,
+    "dataSizeProduction": 7822877999.999999,
+    "storageSizeProduction": 2752512000.0,
+    "indexSizeProduction": 3268608000.0,
+    "ramUsage": 4902912000.0,
+    "diskRequired": 3670016000.0,
+    "ramRequired": 4902912000.0,
+    "sizingBasis": "measured-storage"
+  },
+  "atlas": {
+    "diskRequired": 3670016000.0,
+    "ramRequired": 4902912000.0
+  }
+}
