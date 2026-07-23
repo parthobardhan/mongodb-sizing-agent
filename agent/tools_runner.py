@@ -33,12 +33,13 @@ def run(
     return subprocess.run(cmd, cwd=cwd or PROJECT_ROOT, check=check, env=env)
 
 
-def _emit_pipeline_step(step: str, status: str, *, detail: str = "") -> None:
+def _emit_pipeline_step(step: str, status: str, *, detail: str = "", case: str | None = None) -> None:
     emit_event(
         "pipeline_step",
         step=step,
         status=status,
         detail=detail,
+        case=case,
     )
 
 
@@ -79,29 +80,30 @@ def run_tools_pipeline(
 ) -> Path:
     verify_tools_ready(case_dir)
     uri = uri or os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
+    case_name = case_dir.name
 
     intake = json.loads((case_dir / "inputs" / "intake.json").read_text())
     use_case = intake["useCaseName"]
     db_name = slugify_use_case(use_case)
 
-    _emit_pipeline_step("docker_stack", "running", detail="Starting local MongoDB")
+    _emit_pipeline_step("docker_stack", "running", detail="Starting local MongoDB", case=case_name)
     try:
         run(["bash", "scripts/run_local_stack.sh"])
-        _emit_pipeline_step("docker_stack", "ok")
+        _emit_pipeline_step("docker_stack", "ok", case=case_name)
     except subprocess.CalledProcessError:
-        _emit_pipeline_step("docker_stack", "fail")
+        _emit_pipeline_step("docker_stack", "fail", case=case_name)
         raise
 
     seed = case_dir / "outputs" / "seed.py"
-    _emit_pipeline_step("seed", "running", detail="500 docs per collection")
+    _emit_pipeline_step("seed", "running", detail="500 docs per collection", case=case_name)
     try:
         run([sys.executable, str(seed), "--clear", "--uri", uri])
-        _emit_pipeline_step("seed", "ok")
+        _emit_pipeline_step("seed", "ok", case=case_name)
     except subprocess.CalledProcessError:
-        _emit_pipeline_step("seed", "fail")
+        _emit_pipeline_step("seed", "fail", case=case_name)
         raise
 
-    _emit_pipeline_step("indexes", "running", detail="Applying mongodb_indexes.json")
+    _emit_pipeline_step("indexes", "running", detail="Applying mongodb_indexes.json", case=case_name)
     try:
         run(
             [
@@ -113,9 +115,9 @@ def run_tools_pipeline(
                 str(case_dir),
             ]
         )
-        _emit_pipeline_step("indexes", "ok")
+        _emit_pipeline_step("indexes", "ok", case=case_name)
     except subprocess.CalledProcessError:
-        _emit_pipeline_step("indexes", "fail")
+        _emit_pipeline_step("indexes", "fail", case=case_name)
         raise
 
     inputs_path = sizing_inputs_file_path(case_dir)
@@ -127,7 +129,7 @@ def run_tools_pipeline(
     prod_count = database_production_document_count(sizing_inputs)
 
     out_json = case_dir / "outputs" / "sizing-report.json"
-    _emit_pipeline_step("sizing", "running", detail="dbStats / collStats scaling")
+    _emit_pipeline_step("sizing", "running", detail="dbStats / collStats scaling", case=case_name)
     try:
         run(
             [
@@ -145,15 +147,15 @@ def run_tools_pipeline(
                 str(out_json),
             ]
         )
-        _emit_pipeline_step("sizing", "ok")
+        _emit_pipeline_step("sizing", "ok", case=case_name)
     except subprocess.CalledProcessError:
-        _emit_pipeline_step("sizing", "fail")
+        _emit_pipeline_step("sizing", "fail", case=case_name)
         raise
 
     repo_test = case_dir / "outputs" / "test_mongo_repository.py"
     if repo_test.is_file():
         print("Running legacy repository verification tests...", file=sys.stderr)
-        _emit_pipeline_step("repository_tests", "running", detail="pytest")
+        _emit_pipeline_step("repository_tests", "running", detail="pytest", case=case_name)
         env = os.environ.copy()
         env.setdefault("MONGODB_URI", uri)
         try:
@@ -162,9 +164,9 @@ def run_tools_pipeline(
                 cwd=PROJECT_ROOT,
                 env=env,
             )
-            _emit_pipeline_step("repository_tests", "ok")
+            _emit_pipeline_step("repository_tests", "ok", case=case_name)
         except subprocess.CalledProcessError:
-            _emit_pipeline_step("repository_tests", "fail")
+            _emit_pipeline_step("repository_tests", "fail", case=case_name)
             raise
     else:
         print(
@@ -173,7 +175,7 @@ def run_tools_pipeline(
         )
 
     if cleanup:
-        _emit_pipeline_step("cleanup", "running")
+        _emit_pipeline_step("cleanup", "running", case=case_name)
         run(
             [
                 sys.executable,
@@ -184,13 +186,13 @@ def run_tools_pipeline(
                 use_case,
             ]
         )
-        _emit_pipeline_step("cleanup", "ok")
+        _emit_pipeline_step("cleanup", "ok", case=case_name)
     elif not no_cleanup and out_json.is_file() and sys.stdin.isatty():
         answer = input(
             f"Clear local MongoDB database `{db_name}`? [y/N] "
         ).strip().lower()
         if answer == "y":
-            _emit_pipeline_step("cleanup", "running")
+            _emit_pipeline_step("cleanup", "running", case=case_name)
             run(
                 [
                     sys.executable,
@@ -201,7 +203,7 @@ def run_tools_pipeline(
                     use_case,
                 ]
             )
-            _emit_pipeline_step("cleanup", "ok")
+            _emit_pipeline_step("cleanup", "ok", case=case_name)
 
-    emit_event("pipeline_finished", report_path=str(out_json), case=use_case)
+    emit_event("pipeline_finished", report_path=str(out_json), case=case_name)
     return out_json

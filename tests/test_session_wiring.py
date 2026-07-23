@@ -138,7 +138,7 @@ def test_stream_run_text_concatenates_assistant_blocks():
 
     assert text == "Hello world"
     mock_emit.assert_called_once_with(
-        "assistant_text", text="Hello world", run_id="run-abc"
+        "assistant_text", text="Hello world", run_id="run-abc", case=None
     )
 
 
@@ -171,6 +171,7 @@ def test_stream_run_text_flushes_before_tool_activity():
     assert mock_emit.call_args_list[0].kwargs == {
         "text": "Planning…",
         "run_id": "run-xyz",
+        "case": None,
     }
     assert mock_emit.call_args_list[1].args[0] == "tool_activity"
     assert mock_emit.call_args_list[1].kwargs["tool"] == "Write"

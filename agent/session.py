@@ -167,7 +167,7 @@ def _tool_activity_line(message: Any) -> str | None:
     return f"[tool: {name}{suffix}]"
 
 
-def stream_run_text(run) -> str:
+def stream_run_text(run, *, case: str | None = None) -> str:
     """Stream tokens to the terminal; emit one dashboard event per assistant segment.
 
     Token deltas are buffered and flushed as a single ``assistant_text`` event
@@ -183,7 +183,7 @@ def stream_run_text(run) -> str:
             return
         text = "".join(pending)
         pending.clear()
-        emit_event("assistant_text", text=text, run_id=run_id)
+        emit_event("assistant_text", text=text, run_id=run_id, case=case)
 
     for message in run.messages():
         details = _tool_activity_details(message)
@@ -192,7 +192,7 @@ def stream_run_text(run) -> str:
             name, target = details
             line = f"[tool: {name}{f' {target}' if target else ''}]"
             print(line, file=sys.stderr, flush=True)
-            emit_event("tool_activity", tool=name, target=target, line=line)
+            emit_event("tool_activity", tool=name, target=target, line=line, case=case)
         if getattr(message, "type", None) == "assistant":
             msg = getattr(message, "message", message)
             content = getattr(msg, "content", [])
@@ -209,7 +209,7 @@ def stream_run_text(run) -> str:
                     name, target = details
                     line = f"[tool: {name}{f' {target}' if target else ''}]"
                     print(line, file=sys.stderr, flush=True)
-                    emit_event("tool_activity", tool=name, target=target, line=line)
+                    emit_event("tool_activity", tool=name, target=target, line=line, case=case)
     flush_assistant_text()
     return "".join(parts)
 
@@ -219,6 +219,7 @@ def send_and_wait(
     user_input: str,
     *,
     mode: str | None = None,
+    case: str | None = None,
 ) -> Any:
     opts = _send_options(mode)
     run = agent.send(user_input, opts) if opts else agent.send(user_input)
@@ -228,14 +229,16 @@ def send_and_wait(
         run_id=run.id,
         agent_id=agent.agent_id,
         mode=mode,
+        case=case,
     )
-    stream_run_text(run)
+    stream_run_text(run, case=case)
     result = run.wait()
     emit_event(
         "run_finished",
         run_id=run.id,
         agent_id=agent.agent_id,
         status=result.status,
+        case=case,
     )
     if result.status == "error":
         raise CursorAgentError(

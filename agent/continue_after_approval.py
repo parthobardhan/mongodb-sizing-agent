@@ -118,7 +118,7 @@ def continue_generate_after_approval(
         agent = resume_agent(agent_id)
         with agent:
             try:
-                send_and_wait(agent, prompt, mode="agent")
+                send_and_wait(agent, prompt, mode="agent", case=case_dir.name)
             finally:
                 save_session(outputs, agent.agent_id)
     except Exception as exc:

@@ -56,19 +56,38 @@ async def post_event(payload: EventPayload) -> dict[str, str]:
     return {"status": "ok"}
 
 
+def _event_matches_case(event: dict[str, Any], case: str | None) -> bool:
+    """When filtering by case, skip replay of events that lack or mismatch case."""
+    if not case:
+        return True
+    ev_case = event.get("case")
+    if ev_case is None:
+        return False
+    return ev_case == case
+
+
+@app.get("/api/config")
+async def api_config() -> dict[str, Any]:
+    return {"defaultCase": _default_case}
+
+
 @app.get("/events/stream")
-async def events_stream() -> StreamingResponse:
+async def events_stream(case: str | None = Query(default=None)) -> StreamingResponse:
     queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue(maxsize=100)
     _subscribers.append(queue)
 
     async def generate():
         try:
             for past in _event_buffer:
+                if not _event_matches_case(past, case):
+                    continue
                 yield f"data: {json.dumps(past, default=str)}\n\n"
             while True:
                 event = await queue.get()
                 if event is None:
                     break
+                if not _event_matches_case(event, case):
+                    continue
                 yield f"data: {json.dumps(event, default=str)}\n\n"
         finally:
             if queue in _subscribers:

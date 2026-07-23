@@ -21,6 +21,7 @@
 
   const params = new URLSearchParams(window.location.search);
   let currentCase = params.get("case") || localStorage.getItem("dashboardCase") || "_example";
+  let serverDefaultCase = null;
 
   const els = {
     caseInput: document.getElementById("case-input"),
@@ -63,6 +64,26 @@
     }).catch(function () {});
   }
   // #endregion
+
+  function clearActivityFeed() {
+    els.activityFeed.innerHTML = "";
+    assistantBodyEl = null;
+  }
+
+  function eventMatchesCase(event) {
+    if (!event.case) return true;
+    return event.case === currentCase;
+  }
+
+  function resolveCaseName() {
+    if (params.get("case")) {
+      return params.get("case");
+    }
+    if (serverDefaultCase) {
+      return serverDefaultCase;
+    }
+    return localStorage.getItem("dashboardCase") || "_example";
+  }
 
   function formatBytes(n) {
     if (n == null) return "—";
@@ -241,6 +262,10 @@
         "case " +
         (event.case || currentCase) +
         (event.resumed ? " (resumed)" : " (new)");
+      if (event.case === currentCase) {
+        clearActivityFeed();
+        fetchState();
+      }
     } else if (type === "approval_changed") {
       cardClass += " pipeline ok";
       meta = "approval";
@@ -273,8 +298,17 @@
     return d.innerHTML;
   }
 
+  let eventSource = null;
+
   function connectSSE() {
-    const source = new EventSource("/events/stream");
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    const source = new EventSource(
+      "/events/stream?case=" + encodeURIComponent(currentCase)
+    );
+    eventSource = source;
     source.onopen = function () {
       els.connectionStatus.textContent = "Live";
       els.connectionStatus.className = "connection connected";
@@ -282,6 +316,7 @@
     source.onmessage = function (msg) {
       try {
         const event = JSON.parse(msg.data);
+        if (!eventMatchesCase(event)) return;
         handleStreamEvent(event);
         if (
           event.type === "pipeline_finished" ||
@@ -356,7 +391,28 @@
     const url = new URL(window.location.href);
     url.searchParams.set("case", currentCase);
     window.history.replaceState({}, "", url);
+    clearActivityFeed();
+    connectSSE();
     fetchState();
+  }
+
+  async function bootstrap() {
+    try {
+      const res = await fetch("/api/config");
+      if (res.ok) {
+        const config = await res.json();
+        serverDefaultCase = config.defaultCase || null;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    currentCase = resolveCaseName();
+    els.caseInput.value = currentCase;
+    localStorage.setItem("dashboardCase", currentCase);
+    renderPhases({});
+    fetchState();
+    setInterval(fetchState, 2000);
+    connectSSE();
   }
 
   els.caseApply.addEventListener("click", function () {
@@ -369,21 +425,5 @@
     els.previewDrawer.hidden = true;
   });
 
-  renderPhases({});
-  // #region agent log
-  (function logDrawerVisibility() {
-    var cs = window.getComputedStyle(els.previewDrawer);
-    dbgLog("A", "app.js:init", "preview drawer visibility on load", {
-      hasHiddenAttr: els.previewDrawer.hasAttribute("hidden"),
-      hiddenProp: els.previewDrawer.hidden,
-      computedDisplay: cs.display,
-      computedVisibility: cs.visibility,
-      title: els.previewTitle.textContent,
-      contentLen: els.previewContent.innerHTML.length,
-    });
-  })();
-  // #endregion
-  fetchState();
-  setInterval(fetchState, 2000);
-  connectSSE();
+  bootstrap();
 })();

@@ -81,8 +81,8 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
     with agent:
         if not agent_id:
             try:
-                send_and_wait(agent, SYSTEM_PROMPT, mode=mode)
-                send_and_wait(agent, initial_case_message(case_dir, use_case), mode=mode)
+                send_and_wait(agent, SYSTEM_PROMPT, mode=mode, case=use_case)
+                send_and_wait(agent, initial_case_message(case_dir, use_case), mode=mode, case=use_case)
             except CursorAgentError as exc:
                 print(f"SDK error during bootstrap: {exc}", file=sys.stderr)
                 save_session(outputs, agent.agent_id)
@@ -99,7 +99,7 @@ def cmd_interactive(case_dir: Path, use_case: str, resume_id: str | None) -> int
 
             prev_status = read_approval_status(data_model_path)
             try:
-                send_and_wait(agent, user_input, mode=mode)
+                send_and_wait(agent, user_input, mode=mode, case=use_case)
             except CursorAgentError as exc:
                 print(f"SDK error: {exc}", file=sys.stderr)
                 save_session(outputs, agent.agent_id)

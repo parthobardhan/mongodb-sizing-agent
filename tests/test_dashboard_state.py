@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from dashboard.server import app
+from dashboard.server import _event_matches_case, app
 from dashboard.state import build_case_state, derive_phase_status, read_artifact
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -71,6 +71,19 @@ def test_api_artifact_not_previewable(client: TestClient):
         params={"case": "_example", "name": "seed.py"},
     )
     assert res.status_code == 404
+
+
+def test_api_config_default_case_none(client: TestClient):
+    res = client.get("/api/config")
+    assert res.status_code == 200
+    assert res.json() == {"defaultCase": None}
+
+
+def test_event_matches_case_filter():
+    assert _event_matches_case({"type": "x", "case": "claims"}, "claims")
+    assert not _event_matches_case({"type": "x", "case": "_example"}, "claims")
+    assert not _event_matches_case({"type": "x"}, "claims")
+    assert _event_matches_case({"type": "x"}, None)
 
 
 def test_post_event_and_stream(client: TestClient):
