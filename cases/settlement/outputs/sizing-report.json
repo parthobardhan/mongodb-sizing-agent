@@ -11,27 +11,11 @@
     "indexSize": 155648.0,
     "totalSize": 274432.0,
     "scaleFactor": 1,
-    "fsUsedSize": 18764029952.0,
+    "fsUsedSize": 18763046912.0,
     "fsTotalSize": 270436077568.0,
     "ok": 1.0
   },
   "collections": [
-    {
-      "name": "settlement_batch",
-      "ns": "sizing_payment_settlement_platform.settlement_batch",
-      "collStats": {
-        "count": 500,
-        "avgObjSize": 152,
-        "size": 76000,
-        "storageSize": 32768,
-        "totalIndexSize": 65536
-      },
-      "anchorTable": "SETTLEMENT_BATCH",
-      "disposition": "separate_collection",
-      "productionDocumentCount": 6000000,
-      "dataSizeProduction": 912000000.0,
-      "indexSizeProduction": 786432000.0
-    },
     {
       "name": "payment_instruction",
       "ns": "sizing_payment_settlement_platform.payment_instruction",
@@ -47,6 +31,22 @@
       "productionDocumentCount": 15000000,
       "dataSizeProduction": 8386080000.0,
       "indexSizeProduction": 2703360000.0
+    },
+    {
+      "name": "settlement_batch",
+      "ns": "sizing_payment_settlement_platform.settlement_batch",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 152,
+        "size": 76000,
+        "storageSize": 32768,
+        "totalIndexSize": 65536
+      },
+      "anchorTable": "SETTLEMENT_BATCH",
+      "disposition": "separate_collection",
+      "productionDocumentCount": 6000000,
+      "dataSizeProduction": 912000000.0,
+      "indexSizeProduction": 786432000.0
     }
   ],
   "databaseProductionDocumentCount": 21000000,
