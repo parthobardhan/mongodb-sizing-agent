@@ -1,0 +1,16 @@
+---
+description: Slack posting rules for Cursor Automations — bot posts to #modernization only
+alwaysApply: false
+---
+
+# Slack delivery (workflow notifications)
+
+Outbound automation messages to #modernization must post as **Cursor**, not the connected user.
+
+- Post ONLY with `send_slack_message` from **Cursor Automation Tools**.
+- NEVER use `slack_send_message` from **Slack** MCP for workflow notifications.
+- Slack MCP is still fine for read/search/react/canvas.
+- Channel: #modernization (`C0BHG9GTY8Z`).
+- Multi-message runs: `is_final_message=false` on all but the last post.
+- Threading: persist `thread_ts` from first send; for Slack triggers use `triggerContext.thread_ts`.
+- If `open_git_pr` runs in the same automation, omit PR URLs from Slack text.
