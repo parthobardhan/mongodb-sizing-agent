@@ -11,27 +11,11 @@
     "indexSize": 155648.0,
     "totalSize": 274432.0,
     "scaleFactor": 1,
-    "fsUsedSize": 18535657472.0,
+    "fsUsedSize": 18535759872.0,
     "fsTotalSize": 270436077568.0,
     "ok": 1.0
   },
   "collections": [
-    {
-      "name": "payment_instruction",
-      "ns": "sizing_payment_settlement_platform.payment_instruction",
-      "collStats": {
-        "count": 500,
-        "avgObjSize": 559,
-        "size": 279536,
-        "storageSize": 86016,
-        "totalIndexSize": 90112
-      },
-      "anchorTable": "PAYMENT_INSTRUCTION",
-      "disposition": "anchor",
-      "productionDocumentCount": 15000000,
-      "dataSizeProduction": 8386080000.0,
-      "indexSizeProduction": 2703360000.0
-    },
     {
       "name": "settlement_batch",
       "ns": "sizing_payment_settlement_platform.settlement_batch",
@@ -47,6 +31,22 @@
       "productionDocumentCount": 6000000,
       "dataSizeProduction": 912000000.0,
       "indexSizeProduction": 786432000.0
+    },
+    {
+      "name": "payment_instruction",
+      "ns": "sizing_payment_settlement_platform.payment_instruction",
+      "collStats": {
+        "count": 500,
+        "avgObjSize": 559,
+        "size": 279536,
+        "storageSize": 86016,
+        "totalIndexSize": 90112
+      },
+      "anchorTable": "PAYMENT_INSTRUCTION",
+      "disposition": "anchor",
+      "productionDocumentCount": 15000000,
+      "dataSizeProduction": 8386080000.0,
+      "indexSizeProduction": 2703360000.0
     }
   ],
   "databaseProductionDocumentCount": 21000000,

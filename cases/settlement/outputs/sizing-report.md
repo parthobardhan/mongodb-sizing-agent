@@ -12,8 +12,8 @@
 
 | Collection | Sample count | Prod docs | Data (prod) | Index (prod) |
 |------------|--------------|-----------|-------------|--------------|
-| payment_instruction | 500 | 15000000 | 7.81 GB | 2.52 GB |
 | settlement_batch | 500 | 6000000 | 869.75 MB | 750.00 MB |
+| payment_instruction | 500 | 15000000 | 7.81 GB | 2.52 GB |
 
 ## Atlas sizing (from dbStats scaling)
 
