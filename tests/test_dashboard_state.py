@@ -25,8 +25,9 @@ def test_derive_phase_status_example_case():
     assert phases["intake"] == "done"
     assert phases["plan"] == "done"
     assert phases["design"] == "done"
-    assert phases["code"] == "done"
     assert phases["approval"] == "done"
+    assert phases["code"] == "done"
+    assert phases["test"] == "done"
     assert phases["sizing"] == "done"
     assert phases["output"] == "done"
 
@@ -83,10 +84,13 @@ def test_post_event_and_stream(client: TestClient):
 def test_derive_phase_status_pending_approval(tmp_path: Path):
     case = tmp_path / "case"
     inputs = case / "inputs"
+    legacy = inputs / "legacy"
     outputs = case / "outputs"
     inputs.mkdir(parents=True)
+    legacy.mkdir(parents=True)
     outputs.mkdir(parents=True)
     (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (legacy / "Repo.java").write_text("// legacy")
     (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
     (outputs / "data-model.md").write_text("**Approval status:** pending\n")
     (outputs / "sizing_inputs.json").write_text("{}")
@@ -95,8 +99,113 @@ def test_derive_phase_status_pending_approval(tmp_path: Path):
     assert phases["intake"] == "done"
     assert phases["plan"] == "done"
     assert phases["design"] == "done"
-    assert phases["code"] == "active"
+    assert phases["approval"] == "active"
+    assert phases["code"] == "pending"
+    assert phases["test"] == "pending"
+
+
+def test_derive_phase_status_mid_plan(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+
+    phases = derive_phase_status(outputs)
+    assert phases["intake"] == "done"
+    assert phases["plan"] == "active"
+    assert phases["design"] == "pending"
+
+
+def test_derive_phase_status_mid_plan_with_session(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
+
+    phases = derive_phase_status(outputs)
+    assert phases["plan"] == "active"
+    assert phases["design"] == "pending"
+
+
+def test_derive_phase_status_mid_design(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
+    (outputs / "data-model.md").write_text("**Approval status:** pending\n")
+
+    phases = derive_phase_status(outputs)
+    assert phases["plan"] == "done"
+    assert phases["design"] == "active"
     assert phases["approval"] == "pending"
+
+
+def test_derive_phase_status_post_approval_pre_code(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
+    (outputs / "data-model.md").write_text("**Approval status:** approved\n")
+    (outputs / "sizing_inputs.json").write_text("{}")
+
+    phases = derive_phase_status(outputs)
+    assert phases["approval"] == "done"
+    assert phases["code"] == "active"
+    assert phases["test"] == "done"  # no legacy DAO — test stage skipped
+    assert phases["sizing"] == "pending"
+
+
+def test_derive_phase_status_legacy_code_incomplete(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    legacy = inputs / "legacy"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    legacy.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (legacy / "Repo.java").write_text("// legacy")
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
+    (outputs / "data-model.md").write_text("**Approval status:** approved\n")
+    (outputs / "sizing_inputs.json").write_text("{}")
+    (outputs / "seed.py").write_text("# seed")
+    (outputs / "mongodb_indexes.json").write_text("[]")
+
+    phases = derive_phase_status(outputs)
+    assert phases["code"] == "active"
+    assert phases["test"] == "pending"
+
+
+def test_derive_phase_status_sizing_partial(tmp_path: Path):
+    case = tmp_path / "case"
+    inputs = case / "inputs"
+    outputs = case / "outputs"
+    inputs.mkdir(parents=True)
+    outputs.mkdir(parents=True)
+    (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
+    (outputs / "data-model.md").write_text("**Approval status:** approved\n")
+    (outputs / "sizing_inputs.json").write_text("{}")
+    (outputs / "seed.py").write_text("# seed")
+    (outputs / "mongodb_indexes.json").write_text("[]")
+    (outputs / "sizing-report.json").write_text("{}")
+
+    phases = derive_phase_status(outputs)
+    assert phases["code"] == "done"
+    assert phases["test"] == "done"
+    assert phases["sizing"] == "active"
+    assert phases["output"] == "pending"
 
 
 def test_read_artifact_whitelist():

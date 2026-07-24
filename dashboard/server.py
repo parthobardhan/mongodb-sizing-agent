@@ -112,32 +112,6 @@ async def api_artifact(
     name: str = Query(...),
 ) -> dict[str, str]:
     content = read_artifact(case, name)
-    # #region agent log
-    _dbg_path = Path(__file__).resolve().parent.parent / ".cursor" / "debug-36c7fc.log"
-    try:
-        with _dbg_path.open("a", encoding="utf-8") as _dbg_f:
-            _dbg_f.write(
-                json.dumps(
-                    {
-                        "sessionId": "36c7fc",
-                        "runId": "post-fix",
-                        "hypothesisId": "E",
-                        "location": "server.py:api_artifact",
-                        "message": "artifact requested",
-                        "data": {
-                            "case": case,
-                            "name": name,
-                            "found": content is not None,
-                            "contentLen": len(content or ""),
-                        },
-                        "timestamp": int(time.time() * 1000),
-                    }
-                )
-                + "\n"
-            )
-    except OSError:
-        pass
-    # #endregion
     if content is None:
         raise HTTPException(status_code=404, detail="artifact not found or not previewable")
     return {"name": name, "content": content}

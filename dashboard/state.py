@@ -15,8 +15,9 @@ PHASES = (
     "intake",
     "plan",
     "design",
-    "code",
     "approval",
+    "code",
+    "test",
     "sizing",
     "output",
 )
@@ -78,50 +79,66 @@ def _load_sizing_atlas(outputs: Path) -> dict[str, Any] | None:
     }
 
 
-def derive_phase_status(outputs: Path) -> dict[str, str]:
-    """Return per-phase status: pending | active | done."""
+def _has_legacy(outputs: Path) -> bool:
+    legacy_dir = outputs.parent / "inputs" / "legacy"
+    return legacy_dir.is_dir() and any(legacy_dir.iterdir())
+
+
+def _output_complete(outputs: Path, *, has_legacy: bool) -> bool:
+    required = (
+        "data-model.md",
+        "sizing_inputs.json",
+        "session.json",
+        "seed.py",
+        "mongodb_indexes.json",
+        "sizing-report.json",
+        "sizing-report.md",
+    )
+    if has_legacy:
+        required = required + ("mongo_repository.py", "test_mongo_repository.py")
+    return all((outputs / name).is_file() for name in required)
+
+
+def _phase_completion_flags(outputs: Path) -> dict[str, bool]:
     data_model = outputs / "data-model.md"
     sizing_inputs = outputs / "sizing_inputs.json"
-    session = outputs / "session.json"
     seed = outputs / "seed.py"
     indexes = outputs / "mongodb_indexes.json"
+    mongo_repo = outputs / "mongo_repository.py"
+    test_repo = outputs / "test_mongo_repository.py"
     report_json = outputs / "sizing-report.json"
     report_md = outputs / "sizing-report.md"
+    has_legacy = _has_legacy(outputs)
 
     approval = read_approval_status(data_model)
-    intake_done = (outputs.parent / "inputs" / "intake.json").is_file()
-    plan_done = session.is_file()
-    design_done = data_model.is_file() and sizing_inputs.is_file()
     code_done = seed.is_file() and indexes.is_file()
-    approval_done = approval == "approved"
-    sizing_done = report_json.is_file()
-    output_done = report_md.is_file()
+    if has_legacy:
+        code_done = code_done and mongo_repo.is_file()
 
-    flags = {
-        "intake": intake_done,
-        "plan": plan_done,
-        "design": design_done,
+    return {
+        "intake": (outputs.parent / "inputs" / "intake.json").is_file(),
+        "plan": data_model.is_file(),
+        "design": sizing_inputs.is_file(),
+        "approval": approval == "approved",
         "code": code_done,
-        "approval": approval_done,
-        "sizing": sizing_done,
-        "output": output_done,
+        "test": test_repo.is_file() or not has_legacy,
+        "sizing": report_json.is_file() and report_md.is_file(),
+        "output": _output_complete(outputs, has_legacy=has_legacy),
     }
 
-    statuses: dict[str, str] = {}
-    active_assigned = False
-    for phase in PHASES:
-        if flags[phase]:
-            statuses[phase] = "done"
-        elif not active_assigned:
-            statuses[phase] = "active"
-            active_assigned = True
-        else:
-            statuses[phase] = "pending"
 
-    if output_done:
-        for phase in PHASES:
-            if flags[phase]:
-                statuses[phase] = "done"
+def derive_phase_status(outputs: Path) -> dict[str, str]:
+    """Return per-phase status: pending | active | done."""
+    flags = _phase_completion_flags(outputs)
+
+    statuses: dict[str, str] = {
+        phase: "done" if flags[phase] else "pending" for phase in PHASES
+    }
+
+    for phase in PHASES:
+        if not flags[phase]:
+            statuses[phase] = "active"
+            break
 
     return statuses
 
