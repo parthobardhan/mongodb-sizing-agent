@@ -8,7 +8,7 @@ import copy
 import os
 import random
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -35,7 +35,7 @@ TEMPLATE_PAYMENT = {
     "currencyCode": "USD",
     "totalAmount": 1500.0,
     "instructionStatus": "AU",
-    "valueDate": date(2026, 7, 22).isoformat(),
+    "valueDate": datetime(2026, 7, 22, tzinfo=timezone.utc),
     "createdAt": datetime.now(timezone.utc),
     "allocationLines": [
         {
@@ -71,7 +71,9 @@ def randomize_payment(doc: dict, i: int, rng: random.Random) -> dict:
     out["paymentReference"] = f"REF-{i:06d}"
     out["currencyCode"] = rng.choice(("USD", "EUR", "GBP", "JPY"))
     out["instructionStatus"] = "AU" if i % 5 != 0 else rng.choice(STATUSES)
-    out["valueDate"] = (date(2026, 7, 22) - timedelta(days=rng.randint(0, 90))).isoformat()
+    out["valueDate"] = datetime(2026, 7, 22, tzinfo=timezone.utc) - timedelta(
+        days=rng.randint(0, 90)
+    )
     out["createdAt"] = datetime.now(timezone.utc) - timedelta(days=rng.randint(0, 365))
     n_lines = max(1, int(rng.gauss(EMBEDDED_AVG_CARDINALITY, 0.75)))
     lines = []

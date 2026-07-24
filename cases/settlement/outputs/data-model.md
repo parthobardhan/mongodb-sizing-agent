@@ -123,4 +123,4 @@ Three relational tables collapse to two MongoDB collections. Embedding allocatio
 - Status: **approved**
 - Approved by: parthobardhan
 - Via: GitHub PR comment
-- Approved at: 2026-07-24T06:38:27Z
+- Approved at: 2026-07-24T06:40:00Z
