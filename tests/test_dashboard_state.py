@@ -23,11 +23,12 @@ def test_derive_phase_status_example_case():
     outputs = EXAMPLE_CASE / "outputs"
     phases = derive_phase_status(outputs)
     assert phases["intake"] == "done"
-    assert phases["model"] == "done"
-    assert phases["sizing_gate"] == "done"
+    assert phases["plan"] == "done"
+    assert phases["design"] == "done"
+    assert phases["code"] == "done"
     assert phases["approval"] == "done"
-    assert phases["generate"] == "done"
-    assert phases["tools"] == "done"
+    assert phases["sizing"] == "done"
+    assert phases["output"] == "done"
 
 
 def test_build_case_state_example_has_atlas(client: TestClient):
@@ -86,15 +87,16 @@ def test_derive_phase_status_pending_approval(tmp_path: Path):
     inputs.mkdir(parents=True)
     outputs.mkdir(parents=True)
     (inputs / "intake.json").write_text('{"useCaseName": "Test"}')
+    (outputs / "session.json").write_text('{"agent_id": "agent-test"}')
     (outputs / "data-model.md").write_text("**Approval status:** pending\n")
     (outputs / "sizing_inputs.json").write_text("{}")
 
     phases = derive_phase_status(outputs)
     assert phases["intake"] == "done"
-    assert phases["model"] == "done"
-    assert phases["sizing_gate"] == "done"
-    assert phases["approval"] == "active"
-    assert phases["generate"] == "pending"
+    assert phases["plan"] == "done"
+    assert phases["design"] == "done"
+    assert phases["code"] == "active"
+    assert phases["approval"] == "pending"
 
 
 def test_read_artifact_whitelist():

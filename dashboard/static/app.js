@@ -3,20 +3,22 @@
 
   const PHASE_LABELS = {
     intake: "Intake",
-    model: "Model",
-    sizing_gate: "Sizing gate",
+    plan: "Plan",
+    design: "Design",
+    code: "Code",
     approval: "Approval",
-    generate: "Generate",
-    tools: "Tools",
+    sizing: "Sizing",
+    output: "Output",
   };
 
   const PHASE_ORDER = [
     "intake",
-    "model",
-    "sizing_gate",
+    "plan",
+    "design",
+    "code",
     "approval",
-    "generate",
-    "tools",
+    "sizing",
+    "output",
   ];
 
   const params = new URLSearchParams(window.location.search);

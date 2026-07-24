@@ -13,11 +13,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 PHASES = (
     "intake",
-    "model",
-    "sizing_gate",
+    "plan",
+    "design",
+    "code",
     "approval",
-    "generate",
-    "tools",
+    "sizing",
+    "output",
 )
 
 ARTIFACT_NAMES = (
@@ -81,25 +82,29 @@ def derive_phase_status(outputs: Path) -> dict[str, str]:
     """Return per-phase status: pending | active | done."""
     data_model = outputs / "data-model.md"
     sizing_inputs = outputs / "sizing_inputs.json"
+    session = outputs / "session.json"
     seed = outputs / "seed.py"
     indexes = outputs / "mongodb_indexes.json"
-    report = outputs / "sizing-report.json"
+    report_json = outputs / "sizing-report.json"
+    report_md = outputs / "sizing-report.md"
 
     approval = read_approval_status(data_model)
     intake_done = (outputs.parent / "inputs" / "intake.json").is_file()
-    model_done = data_model.is_file()
-    sizing_gate_done = sizing_inputs.is_file()
+    plan_done = session.is_file()
+    design_done = data_model.is_file() and sizing_inputs.is_file()
+    code_done = seed.is_file() and indexes.is_file()
     approval_done = approval == "approved"
-    generate_done = seed.is_file() and indexes.is_file()
-    tools_done = report.is_file()
+    sizing_done = report_json.is_file()
+    output_done = report_md.is_file()
 
     flags = {
         "intake": intake_done,
-        "model": model_done,
-        "sizing_gate": sizing_gate_done,
+        "plan": plan_done,
+        "design": design_done,
+        "code": code_done,
         "approval": approval_done,
-        "generate": generate_done,
-        "tools": tools_done,
+        "sizing": sizing_done,
+        "output": output_done,
     }
 
     statuses: dict[str, str] = {}
@@ -113,7 +118,7 @@ def derive_phase_status(outputs: Path) -> dict[str, str]:
         else:
             statuses[phase] = "pending"
 
-    if tools_done:
+    if output_done:
         for phase in PHASES:
             if flags[phase]:
                 statuses[phase] = "done"

@@ -36,6 +36,16 @@ class EventPayload(BaseModel):
 app = FastAPI(title="Legacy Modernization Agent — Monitoring")
 
 
+@app.middleware("http")
+async def disable_static_cache(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/") or path == "/":
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 def _broadcast(event: dict[str, Any]) -> None:
     for queue in list(_subscribers):
         try:
@@ -135,7 +145,10 @@ async def api_artifact(
 
 @app.get("/")
 async def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"},
+    )
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
