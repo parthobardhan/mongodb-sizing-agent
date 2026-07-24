@@ -1,0 +1,37 @@
+---
+description: Cursor Automation — notify #modernization when a modernization PR is opened
+alwaysApply: false
+---
+
+# Modernization PR opened → Slack
+
+Trigger: GitHub `pull_request` **opened** with file changes.
+
+## Gate (required)
+
+Run `automation/modernization_pr.py` helpers (or equivalent logic). **Do not post to Slack** unless:
+
+1. The PR has at least one changed file (`has_file_changes`), and
+2. `is_modernization_pr` is true — i.e. any of:
+   - Label `modernization-case`
+   - Changed paths under `cases/` (modernization workload artifacts)
+   - Title starts with `Modernization resources:`
+
+If the PR is **not** for modernization resources **and** lacks `modernization-case`, **exit without Slack**.
+
+## Slack message
+
+Follow `.cursor/rules/slack-notifications.mdc`:
+
+- Post with `send_slack_message` to #modernization (`C0BHG9GTY8Z`).
+- Include the PR summary (`extract_pr_summary` on `triggerContext` / `gh pr view` body).
+- Include the PR link (`triggerContext.url` or `gh pr view --json url`).
+- Ask reviewers to **Approve** or **Suggest changes** on GitHub.
+- This automation reacts to an existing PR — **include the PR URL** (unlike automations that call `open_git_pr`).
+
+## Example flow
+
+1. Read `triggerContext` (`prNumber`, `url`, `title`, `author`, `diffCommand`).
+2. Fetch labels and changed files (`gh pr view <n> --json labels,files,body`).
+3. If gated out → stop.
+4. `send_slack_message` with `format_pr_slack_message(...)`.
